@@ -1,0 +1,6 @@
+dist/
+web/dist/
+node_modules/
+drizzle/
+coverage/
+*.sqlite
