@@ -1,2 +1,1 @@
-// Barrel for the SQLite data layer (client, schema, migrate, upserts). Populated in Phase 1.
-export {};
+export { MEMORY_DATABASE_PATH, openDatabase, type AppDatabase, type DbClient } from "./client.js";
