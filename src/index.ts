@@ -1,12 +1,20 @@
-/**
- * Stethoscope — entrypoint.
- *
- * Scaffold only (Dev Plan T01): the process boots and logs that it is up.
- * The Fastify app factory, config, and routes arrive in Phase 0 (T02–T03).
- */
+import { ConfigError, loadConfig } from "./config.js";
+import { startServer } from "./server.js";
 
-function main(): void {
-  console.log("stethoscope: up");
+async function main(): Promise<void> {
+  try {
+    const config = loadConfig();
+    await startServer(config);
+  } catch (error) {
+    if (error instanceof ConfigError) {
+      console.error(error.message);
+      process.exit(1);
+    }
+    throw error;
+  }
 }
 
-main();
+void main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+});
