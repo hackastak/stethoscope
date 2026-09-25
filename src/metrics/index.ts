@@ -19,3 +19,14 @@ export {
   type ReciprocityGraph,
   type ReciprocityNode,
 } from "./reciprocity.js";
+export {
+  DEFAULT_FAST_APPROVAL_SECONDS,
+  DEFAULT_MIN_PR_SIZE,
+  detectRubberStamps,
+  type DetectRubberStampsOptions,
+  type RubberStampApproval,
+  type RubberStampPair,
+  type RubberStampRate,
+  type RubberStampReport,
+  type RubberStampReviewer,
+} from "./rubberstamp.js";
