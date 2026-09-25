@@ -2,6 +2,7 @@ import { buildApp } from "./app.js";
 import type { Config } from "./config.js";
 import { openDatabase } from "./db/client.js";
 import { migrateDatabase } from "./db/migrate.js";
+import { createGitHubClient } from "./github/client.js";
 
 type App = Awaited<ReturnType<typeof buildApp>>;
 
@@ -29,14 +30,19 @@ export async function listen(app: App, config: Config): Promise<void> {
 
 export async function startServer(config: Config): Promise<App> {
   const client = openDatabase(config.databasePath);
+  let app: App;
   try {
     migrateDatabase(client.db);
+    app = await buildApp({
+      config,
+      db: client.db,
+      github: createGitHubClient(config),
+    });
   } catch (error) {
     client.close();
     throw error;
   }
 
-  const app = await buildApp({ config });
   app.addHook("onClose", async () => {
     client.close();
   });

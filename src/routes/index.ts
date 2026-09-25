@@ -1,2 +1,2 @@
-// Barrel for HTTP route handlers. Populated in Phase 0+ (health, sync, repos, insights, narrative).
-export {};
+export { healthRoutes } from "./health.js";
+export { syncRoutes, type SyncRouteOptions } from "./sync.js";
