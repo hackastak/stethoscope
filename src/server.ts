@@ -1,5 +1,7 @@
 import { buildApp } from "./app.js";
 import type { Config } from "./config.js";
+import { openDatabase } from "./db/client.js";
+import { migrateDatabase } from "./db/migrate.js";
 
 type App = Awaited<ReturnType<typeof buildApp>>;
 
@@ -26,8 +28,24 @@ export async function listen(app: App, config: Config): Promise<void> {
 }
 
 export async function startServer(config: Config): Promise<App> {
+  const client = openDatabase(config.databasePath);
+  try {
+    migrateDatabase(client.db);
+  } catch (error) {
+    client.close();
+    throw error;
+  }
+
   const app = await buildApp({ config });
+  app.addHook("onClose", async () => {
+    client.close();
+  });
   registerShutdown(app);
-  await listen(app, config);
+  try {
+    await listen(app, config);
+  } catch (error) {
+    await app.close();
+    throw error;
+  }
   return app;
 }

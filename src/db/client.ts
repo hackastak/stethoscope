@@ -1,10 +1,11 @@
 import Database from "better-sqlite3";
 import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import * as schema from "./schema.js";
 
 /** File-less SQLite path used by tests. WAL is not available for this path. */
 export const MEMORY_DATABASE_PATH = ":memory:";
 
-export type AppDatabase = BetterSQLite3Database;
+export type AppDatabase = BetterSQLite3Database<typeof schema>;
 
 export type DbClient = {
   readonly databasePath: string;
@@ -23,7 +24,7 @@ export function openDatabase(databasePath: string): DbClient {
     sqlite.pragma("journal_mode = WAL");
   }
 
-  const db = drizzle(sqlite);
+  const db = drizzle(sqlite, { schema });
 
   return {
     databasePath,

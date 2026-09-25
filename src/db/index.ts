@@ -1,1 +1,28 @@
 export { MEMORY_DATABASE_PATH, openDatabase, type AppDatabase, type DbClient } from "./client.js";
+export { migrateDatabase } from "./migrate.js";
+export {
+  pullRequests,
+  prStates,
+  repos,
+  reviewComments,
+  reviewStates,
+  reviews,
+  syncRuns,
+  syncStatuses,
+  users,
+  type NewPullRequest,
+  type NewRepo,
+  type NewReview,
+  type NewReviewComment,
+  type NewSyncRun,
+  type NewUser,
+  type PrState,
+  type PullRequest,
+  type Repo,
+  type Review,
+  type ReviewComment,
+  type ReviewState,
+  type SyncRun,
+  type SyncStatus,
+  type User,
+} from "./schema.js";
