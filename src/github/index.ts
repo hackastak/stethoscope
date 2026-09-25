@@ -5,6 +5,7 @@ export {
   type GitHubLog,
 } from "./client.js";
 export { fetchPullRequests } from "./pulls.js";
+export { listRepos, type ListReposQuery, type RepoSummary, type RepoVisibility } from "./repos.js";
 export { fetchReviews } from "./reviews.js";
 export type {
   FetchPullRequestsOptions,
