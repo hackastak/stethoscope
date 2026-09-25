@@ -11,3 +11,11 @@ export {
   type MetricWindowQuery,
   type LoadMetricWindowOptions,
 } from "./loaders.js";
+export {
+  DEFAULT_MIN_RECIPROCITY_INTERACTIONS,
+  buildReciprocityGraph,
+  type BuildReciprocityOptions,
+  type ReciprocityEdge,
+  type ReciprocityGraph,
+  type ReciprocityNode,
+} from "./reciprocity.js";
