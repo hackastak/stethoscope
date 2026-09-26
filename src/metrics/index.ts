@@ -1,4 +1,4 @@
-// Barrel for pure metric functions (reciprocity, rubber-stamp, cycle time, load balance). Populated in Phase 3.
+// Barrel for pure metric functions (reciprocity, rubber-stamp, cycle time, load balance).
 export type { PullRequest, Repo, Review, ReviewComment, SyncRun, User } from "../db/schema.js";
 export {
   DEFAULT_METRIC_WINDOW_SECONDS,
@@ -30,3 +30,9 @@ export {
   type RubberStampReport,
   type RubberStampReviewer,
 } from "./rubberstamp.js";
+export {
+  computeCycleTime,
+  type CycleTimePull,
+  type CycleTimeReport,
+  type CycleTimeStats,
+} from "./cycletime.js";
