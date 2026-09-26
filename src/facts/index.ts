@@ -1,2 +1,2 @@
-// Barrel for the facts model (stable-id fact builder + types). Populated in Phase 4.
-export {};
+export { buildFacts, type BuildFactsInput } from "./build.js";
+export { FACT_KINDS, FACT_UNITS, type Fact, type FactKind, type FactUnit } from "./types.js";
