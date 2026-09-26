@@ -1,4 +1,4 @@
-// Barrel for pure metric functions (reciprocity, rubber-stamp, cycle time, load balance).
+// Barrel for pure metric functions (reciprocity, rubber-stamp, cycle time, load balance, leaderboards).
 export type { PullRequest, Repo, Review, ReviewComment, SyncRun, User } from "../db/schema.js";
 export {
   DEFAULT_METRIC_WINDOW_SECONDS,
@@ -36,3 +36,19 @@ export {
   type CycleTimeReport,
   type CycleTimeStats,
 } from "./cycletime.js";
+export {
+  DEFAULT_BUS_FACTOR_COVERAGE,
+  computeLoadBalance,
+  type ActivityBalance,
+  type BusFactor,
+  type ComputeLoadBalanceOptions,
+  type Concentration,
+  type LoadBalanceReport,
+  type LoadShare,
+} from "./loadbalance.js";
+export {
+  buildLeaderboards,
+  compareByCountDesc,
+  type LeaderboardEntry,
+  type Leaderboards,
+} from "./leaderboards.js";
