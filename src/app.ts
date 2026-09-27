@@ -7,6 +7,7 @@ import { errorToProblem, problem } from "./lib/errors.js";
 import { createLogger } from "./lib/logger.js";
 import { healthRoutes } from "./routes/health.js";
 import { insightsRoutes } from "./routes/insights.js";
+import { insightsGraphRoutes } from "./routes/insightsGraph.js";
 import { reposRoutes } from "./routes/repos.js";
 import { syncRoutes } from "./routes/sync.js";
 
@@ -50,6 +51,11 @@ export async function buildApp(options: BuildAppOptions) {
   }
   if (options.db) {
     await app.register(insightsRoutes, {
+      db: options.db,
+      config: options.config,
+      now: options.now,
+    });
+    await app.register(insightsGraphRoutes, {
       db: options.db,
       config: options.config,
       now: options.now,

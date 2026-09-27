@@ -31,7 +31,7 @@ export type InsightsRouteOptions = {
   now?: () => number;
 };
 
-function httpError(statusCode: number, message: string): Error & { statusCode: number } {
+export function httpError(statusCode: number, message: string): Error & { statusCode: number } {
   return Object.assign(new Error(message), { statusCode });
 }
 
@@ -44,7 +44,7 @@ function validationError(message: string): Error & { statusCode: number } {
  * A narrower or failed run is not enough: metrics would look complete while GitHub was never read
  * for part of the range. In-progress runs are the same hint — call POST /sync, then retry.
  */
-function assertSynced(
+export function assertSynced(
   db: AppDatabase,
   repoId: number,
   owner: string,

@@ -205,6 +205,34 @@ export const insightsResponseSchema = z
 
 export type InsightsResponse = z.infer<typeof insightsResponseSchema>;
 
+const insightsGraphNodeSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string().min(1),
+    reviewsGiven: z.number().int().nonnegative(),
+    reviewsReceived: z.number().int().nonnegative(),
+  })
+  .strict();
+
+const insightsGraphEdgeSchema = z
+  .object({
+    source: z.string().min(1),
+    target: z.string().min(1),
+    weight: z.number().int().positive(),
+    flagged: z.boolean(),
+  })
+  .strict();
+
+/** Frontend graph payload. Internal fields (github ids, scores, reverse weight) stay off the wire. */
+export const insightsGraphResponseSchema = z
+  .object({
+    nodes: z.array(insightsGraphNodeSchema),
+    edges: z.array(insightsGraphEdgeSchema),
+  })
+  .strict();
+
+export type InsightsGraphResponse = z.infer<typeof insightsGraphResponseSchema>;
+
 export function formatInsightsIssues(error: z.ZodError): string {
   if (error.issues.length === 0) return "Invalid query";
   return error.issues

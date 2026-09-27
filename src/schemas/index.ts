@@ -1,7 +1,9 @@
 export {
   formatInsightsIssues,
+  insightsGraphResponseSchema,
   insightsQuerySchema,
   insightsResponseSchema,
+  type InsightsGraphResponse,
   type InsightsQuery,
   type InsightsResponse,
 } from "./insights.js";
