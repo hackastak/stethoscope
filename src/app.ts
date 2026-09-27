@@ -6,6 +6,7 @@ import type { GitHubClient } from "./github/client.js";
 import { errorToProblem, problem } from "./lib/errors.js";
 import { createLogger } from "./lib/logger.js";
 import { healthRoutes } from "./routes/health.js";
+import { insightsRoutes } from "./routes/insights.js";
 import { reposRoutes } from "./routes/repos.js";
 import { syncRoutes } from "./routes/sync.js";
 
@@ -16,6 +17,8 @@ export type BuildAppOptions = {
   production?: boolean;
   db?: AppDatabase;
   github?: GitHubClient;
+  /** Milliseconds since the epoch. Forwarded to insight window resolution. */
+  now?: () => number;
 };
 
 export async function buildApp(options: BuildAppOptions) {
@@ -44,6 +47,13 @@ export async function buildApp(options: BuildAppOptions) {
   }
   if (options.db && options.github) {
     await app.register(syncRoutes, { db: options.db, github: options.github });
+  }
+  if (options.db) {
+    await app.register(insightsRoutes, {
+      db: options.db,
+      config: options.config,
+      now: options.now,
+    });
   }
   return app;
 }

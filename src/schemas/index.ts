@@ -1,3 +1,10 @@
+export {
+  formatInsightsIssues,
+  insightsQuerySchema,
+  insightsResponseSchema,
+  type InsightsQuery,
+  type InsightsResponse,
+} from "./insights.js";
 export { formatReposIssues, reposQuerySchema, type ReposQuery } from "./repos.js";
 export {
   formatSyncIssues,
