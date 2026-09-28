@@ -215,7 +215,15 @@ describe("buildReciprocityGraph", () => {
     expect(graph.nodes.map((node) => node.id)).toEqual(["ada", "grace"]);
   });
 
-  it("returns an empty graph for a window with no cross-reviews", () => {
+  it("returns an empty graph for an empty window", () => {
+    expect(buildReciprocityGraph({ pullRequests: [] })).toEqual({
+      minInteractions: 3,
+      nodes: [],
+      edges: [],
+    });
+  });
+
+  it("returns an empty graph for a single user with only a self-review", () => {
     const graph = buildReciprocityGraph({ pullRequests: [pull(ada, 1, [review(ada, 10)])] });
 
     expect(graph).toEqual({ minInteractions: 3, nodes: [], edges: [] });

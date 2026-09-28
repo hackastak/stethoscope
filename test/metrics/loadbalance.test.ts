@@ -139,6 +139,28 @@ describe("computeLoadBalance", () => {
     expect(authorship.reviews.busFactor.count).toBeNull();
   });
 
+  it("stops when the running total equals coverage times total, and does not take the next person", () => {
+    // ada and grace each reviewed twice. Tie-break puts ada first. 2 is exactly half of 4.
+    const report = computeLoadBalance(
+      {
+        pullRequests: [
+          pull(grace, 1, [review(ada, 11)]),
+          pull(grace, 2, [review(ada, 12)]),
+          pull(ada, 3, [review(grace, 21)]),
+          pull(ada, 4, [review(grace, 22)]),
+        ],
+      },
+      { coverage: 0.5 },
+    );
+
+    expect(report.reviews.busFactor).toEqual({
+      count: 1,
+      coverage: 0.5,
+      total: 4,
+      contributors: [{ githubId: 1, login: "ada", count: 2, share: 0.5 }],
+    });
+  });
+
   it("excludes self-reviews and leaves an empty window undefined rather than zero", () => {
     const selfOnly = computeLoadBalance({
       pullRequests: [pull(ada, 1, [review(ada, 11)])],

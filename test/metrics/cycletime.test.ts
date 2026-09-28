@@ -171,6 +171,27 @@ describe("computeCycleTime", () => {
     });
   });
 
+  it("keeps a single user's own review out of every stage sample", () => {
+    const report = computeCycleTime({
+      pullRequests: [pull(ada, 1, [review(ada, 10, 1_010, "APPROVED")], { mergedAt: 1_500 })],
+    });
+
+    expect(report.pulls).toEqual([
+      expect.objectContaining({
+        pullRequestNumber: 1,
+        author: ada,
+        firstReviewAt: null,
+        firstApprovalAt: null,
+        readyToFirstReview: null,
+        firstReviewToFirstApproval: null,
+        firstApprovalToMerge: null,
+      }),
+    ]);
+    expect(report.readyToFirstReview).toEqual({ count: 0, median: null, p75: null });
+    expect(report.firstReviewToFirstApproval).toEqual({ count: 0, median: null, p75: null });
+    expect(report.firstApprovalToMerge).toEqual({ count: 0, median: null, p75: null });
+  });
+
   it("returns empty stats when nothing merged", () => {
     const report = computeCycleTime({ pullRequests: [] });
 

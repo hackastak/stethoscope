@@ -247,6 +247,34 @@ describe("detectRubberStamps", () => {
     ]);
   });
 
+  it("returns no rates for an empty window", () => {
+    const report = detectRubberStamps({ pullRequests: [] }, thresholds);
+
+    expect(report.approvals).toEqual([]);
+    expect(report.reviewers).toEqual([]);
+    expect(report.pairs).toEqual([]);
+  });
+
+  it("scores a single user's self-approval with the same three boundaries", () => {
+    const atTime = detectRubberStamps(
+      { pullRequests: [pull(ada, 1, [review(ada, 10, 1_300)])] },
+      thresholds,
+    );
+    const flagged = detectRubberStamps(
+      { pullRequests: [pull(ada, 2, [review(ada, 11, 1_299)])] },
+      thresholds,
+    );
+
+    expect(atTime.approvals[0]).toMatchObject({ timeToApproval: 300, flagged: false });
+    expect(atTime.reviewers).toEqual([
+      expect.objectContaining({ reviewer: ada, flagged: 0, eligible: 1, rate: 0 }),
+    ]);
+    expect(atTime.pairs).toEqual([
+      expect.objectContaining({ reviewer: ada, author: ada, flagged: 0, eligible: 1, rate: 0 }),
+    ]);
+    expect(flagged.reviewers[0]).toMatchObject({ reviewer: ada, flagged: 1, eligible: 1, rate: 1 });
+  });
+
   it("uses the configured defaults and returns a null rate when nobody approved", () => {
     const report = detectRubberStamps({
       pullRequests: [pull(grace, 1, [review(ada, 10, 1_010, { state: "COMMENTED" })])],
