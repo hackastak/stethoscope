@@ -12,6 +12,7 @@ const STATUS_TEXT: Record<number, string> = {
   409: "Conflict",
   429: "Too Many Requests",
   500: "Internal Server Error",
+  502: "Bad Gateway",
 };
 
 export function problem(status: number, message: string): Problem {
