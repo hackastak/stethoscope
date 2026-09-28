@@ -10,7 +10,7 @@ body {
 }
 
 main {
-  max-width: 40rem;
+  max-width: 72rem;
   margin: 4rem auto;
   padding: 0 1.5rem;
 }
@@ -65,4 +65,41 @@ select:disabled {
 [data-status="success"],
 [data-status="ok"] {
   color: #3f6212;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.tables {
+  display: grid;
+  gap: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 600;
+  padding: 0 0 0.35rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #e7e5e4;
+  vertical-align: top;
+}
+
+th:not(:first-child),
+td:not(:first-child) {
+  text-align: right;
 }

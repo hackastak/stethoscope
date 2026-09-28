@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "./api/client.js";
+import { useState } from "react";
+import { api, type WindowQuery } from "./api/client.js";
 import { healthQuery } from "./api/queries.js";
+import { InsightTables } from "./components/InsightTables.js";
 import { QueryControls } from "./components/QueryControls.js";
 
 function apiStatus(state: { isPending: boolean; isError: boolean; error: Error | null }): string {
@@ -11,6 +13,7 @@ function apiStatus(state: { isPending: boolean; isError: boolean; error: Error |
 
 export function App() {
   const health = useQuery(healthQuery(api));
+  const [window, setWindow] = useState<WindowQuery | null>(null);
 
   return (
     <main>
@@ -22,7 +25,8 @@ export function App() {
           {apiStatus(health)}
         </span>
       </p>
-      <QueryControls />
+      <QueryControls onWindowChange={setWindow} />
+      <InsightTables window={window} />
     </main>
   );
 }

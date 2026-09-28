@@ -8,6 +8,7 @@ import {
   type InsightsResponse,
   type RepoSummary,
   type SyncResponse,
+  type WindowQuery,
 } from "../../src/api/client.js";
 import { QueryControls } from "../../src/components/QueryControls.js";
 
@@ -40,13 +41,13 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function renderControls(client: ApiClient) {
+function renderControls(client: ApiClient, onWindowChange?: (window: WindowQuery | null) => void) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <QueryControls client={client} now={() => NOW} />
+      <QueryControls client={client} now={() => NOW} onWindowChange={onWindowChange} />
     </QueryClientProvider>,
   );
 }
@@ -215,5 +216,30 @@ describe("QueryControls", () => {
       "textContent",
       "No synced data for octocat/hello-world between 1 and 2.",
     );
+  });
+
+  it("clears the insight window during sync and publishes it after insights are requested", async () => {
+    const user = userEvent.setup();
+    const windows: Array<WindowQuery | null> = [];
+    const syncGate = deferred<SyncResponse>();
+    renderControls(
+      client({
+        sync: () => syncGate.promise,
+        insights: async () => ({}) as InsightsResponse,
+      }),
+      (window) => {
+        windows.push(window);
+      },
+    );
+
+    await user.type(screen.getByRole("textbox", { name: "owner/repo" }), "ada/scope");
+    await user.click(screen.getByRole("button", { name: "Sync" }));
+    expect(windows).toEqual([null]);
+
+    syncGate.resolve(SYNCED);
+    expect(
+      await screen.findByText("Synced 4 pull requests and 9 reviews. Insights loaded."),
+    ).toBeTruthy();
+    expect(windows).toEqual([null, { owner: "ada", repo: "scope", ...WINDOW }]);
   });
 });

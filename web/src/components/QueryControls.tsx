@@ -20,6 +20,11 @@ export type QueryControlsProps = {
   client?: ApiClient;
   /** Milliseconds since the epoch. Used once to seed the date picker. */
   now?: () => number;
+  /**
+   * The window written to `['insights', window]`. Null while a sync is in flight
+   * and until the first sync succeeds, so tables do not keep the previous repo.
+   */
+  onWindowChange?: (window: WindowQuery | null) => void;
 };
 
 type StatusKind = "idle" | "pending" | "error" | "success";
@@ -32,7 +37,11 @@ function successText(result: SyncResponse): string {
   return `Synced ${result.prCount} pull requests and ${result.reviewCount} reviews. Insights loaded.`;
 }
 
-export function QueryControls({ client = api, now = Date.now }: QueryControlsProps) {
+export function QueryControls({
+  client = api,
+  now = Date.now,
+  onWindowChange,
+}: QueryControlsProps) {
   const queryClient = useQueryClient();
   const [slug, setSlug] = useState("");
   const [dates, setDates] = useState(() => defaultUtcDateRange(now()));
@@ -59,6 +68,7 @@ export function QueryControls({ client = api, now = Date.now }: QueryControlsPro
       until: resolved.until,
     };
     setSubmitted(null);
+    onWindowChange?.(null);
     try {
       await sync.mutateAsync(body);
     } catch {
@@ -66,6 +76,7 @@ export function QueryControls({ client = api, now = Date.now }: QueryControlsPro
     }
     await queryClient.invalidateQueries({ queryKey: ["insights", body] });
     setSubmitted(body);
+    onWindowChange?.(body);
   }
 
   const status = statusFor({
