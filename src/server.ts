@@ -3,6 +3,7 @@ import type { Config } from "./config.js";
 import { openDatabase } from "./db/client.js";
 import { migrateDatabase } from "./db/migrate.js";
 import { createGitHubClient } from "./github/client.js";
+import { createAnthropicProvider } from "./llm/anthropic.js";
 
 type App = Awaited<ReturnType<typeof buildApp>>;
 
@@ -37,6 +38,7 @@ export async function startServer(config: Config): Promise<App> {
       config,
       db: client.db,
       github: createGitHubClient(config),
+      llm: createAnthropicProvider(config),
     });
   } catch (error) {
     client.close();

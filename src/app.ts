@@ -3,11 +3,13 @@ import type { DestinationStream } from "pino";
 import type { Config } from "./config.js";
 import type { AppDatabase } from "./db/client.js";
 import type { GitHubClient } from "./github/client.js";
+import type { LLMProvider } from "./llm/provider.js";
 import { errorToProblem, problem } from "./lib/errors.js";
 import { createLogger } from "./lib/logger.js";
 import { healthRoutes } from "./routes/health.js";
 import { insightsRoutes } from "./routes/insights.js";
 import { insightsGraphRoutes } from "./routes/insightsGraph.js";
+import { narrativeRoutes, type NarrativeRateLimit } from "./routes/narrative.js";
 import { reposRoutes } from "./routes/repos.js";
 import { syncRoutes } from "./routes/sync.js";
 
@@ -18,7 +20,11 @@ export type BuildAppOptions = {
   production?: boolean;
   db?: AppDatabase;
   github?: GitHubClient;
-  /** Milliseconds since the epoch. Forwarded to insight window resolution. */
+  /** Injected completion seam. Without it, POST /narrative is not registered. */
+  llm?: LLMProvider;
+  /** Overrides the narrative route's per-IP limit. Production uses the route defaults. */
+  narrativeRateLimit?: NarrativeRateLimit;
+  /** Epoch milliseconds. Used for omitted insight bounds and the narrative rate-limit clock. */
   now?: () => number;
 };
 
@@ -59,6 +65,15 @@ export async function buildApp(options: BuildAppOptions) {
       db: options.db,
       config: options.config,
       now: options.now,
+    });
+  }
+  if (options.db && options.llm) {
+    await app.register(narrativeRoutes, {
+      db: options.db,
+      config: options.config,
+      provider: options.llm,
+      now: options.now,
+      rateLimit: options.narrativeRateLimit,
     });
   }
   return app;

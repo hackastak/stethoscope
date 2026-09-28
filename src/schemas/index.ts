@@ -7,7 +7,15 @@ export {
   type InsightsQuery,
   type InsightsResponse,
 } from "./insights.js";
-export { narrativeOutputSchema, type NarrativeOutput } from "./narrative.js";
+export {
+  formatNarrativeIssues,
+  narrativeBodySchema,
+  narrativeOutputSchema,
+  narrativeResponseSchema,
+  type NarrativeBody,
+  type NarrativeOutput,
+  type NarrativeResponse,
+} from "./narrative.js";
 export { formatReposIssues, reposQuerySchema, type ReposQuery } from "./repos.js";
 export {
   formatSyncIssues,
