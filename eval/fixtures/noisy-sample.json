@@ -1,0 +1,193 @@
+{
+  "id": "noisy-sample",
+  "signal": "insufficient",
+  "context": {
+    "owner": "acme",
+    "repo": "noisy-sample",
+    "since": 1700000000,
+    "until": 1702592000,
+    "model": "claude-sonnet-5"
+  },
+  "facts": [
+    {
+      "id": "fact:cycletime:approval_to_merge_n",
+      "kind": "cycletime",
+      "subject": "approval_to_merge_n",
+      "value": 1,
+      "unit": "pull_requests",
+      "detail": "Merged pull requests with a non-negative first non-author approval to merge interval."
+    },
+    {
+      "id": "fact:cycletime:approval_to_merge_p50",
+      "kind": "cycletime",
+      "subject": "approval_to_merge_p50",
+      "value": 3600,
+      "unit": "seconds",
+      "detail": "Median seconds from first non-author approval to merge. Null when no merged pull request had this interval. n=1."
+    },
+    {
+      "id": "fact:cycletime:approval_to_merge_p75",
+      "kind": "cycletime",
+      "subject": "approval_to_merge_p75",
+      "value": 3600,
+      "unit": "seconds",
+      "detail": "75th percentile seconds from first non-author approval to merge. Null when no merged pull request had this interval. n=1."
+    },
+    {
+      "id": "fact:cycletime:first_review_n",
+      "kind": "cycletime",
+      "subject": "first_review_n",
+      "value": 1,
+      "unit": "pull_requests",
+      "detail": "Merged pull requests with a non-negative ready (or created, when ready is missing) to first non-author review interval."
+    },
+    {
+      "id": "fact:cycletime:first_review_p50",
+      "kind": "cycletime",
+      "subject": "first_review_p50",
+      "value": 60,
+      "unit": "seconds",
+      "detail": "Median seconds from ready (or created, when ready is missing) to first non-author review. Null when no merged pull request had this interval. n=1."
+    },
+    {
+      "id": "fact:cycletime:first_review_p75",
+      "kind": "cycletime",
+      "subject": "first_review_p75",
+      "value": 60,
+      "unit": "seconds",
+      "detail": "75th percentile seconds from ready (or created, when ready is missing) to first non-author review. Null when no merged pull request had this interval. n=1."
+    },
+    {
+      "id": "fact:cycletime:review_to_approval_n",
+      "kind": "cycletime",
+      "subject": "review_to_approval_n",
+      "value": 1,
+      "unit": "pull_requests",
+      "detail": "Merged pull requests with a non-negative first non-author review to first non-author approval interval."
+    },
+    {
+      "id": "fact:cycletime:review_to_approval_p50",
+      "kind": "cycletime",
+      "subject": "review_to_approval_p50",
+      "value": 0,
+      "unit": "seconds",
+      "detail": "Median seconds from first non-author review to first non-author approval. Null when no merged pull request had this interval. n=1."
+    },
+    {
+      "id": "fact:cycletime:review_to_approval_p75",
+      "kind": "cycletime",
+      "subject": "review_to_approval_p75",
+      "value": 0,
+      "unit": "seconds",
+      "detail": "75th percentile seconds from first non-author review to first non-author approval. Null when no merged pull request had this interval. n=1."
+    },
+    {
+      "id": "fact:leaderboard:authors:grace",
+      "kind": "leaderboard",
+      "subject": "authors:grace",
+      "value": 1,
+      "unit": "pull_requests",
+      "detail": "grace has 1 authored pull request (position 1)."
+    },
+    {
+      "id": "fact:leaderboard:closers:grace",
+      "kind": "leaderboard",
+      "subject": "closers:grace",
+      "value": 1,
+      "unit": "pull_requests",
+      "detail": "grace has 1 merged pull request authored (position 1)."
+    },
+    {
+      "id": "fact:leaderboard:reviewers:ada",
+      "kind": "leaderboard",
+      "subject": "reviewers:ada",
+      "value": 1,
+      "unit": "reviews",
+      "detail": "ada has 1 non-self review submission (position 1)."
+    },
+    {
+      "id": "fact:loadbalance:authorship_bus_factor",
+      "kind": "loadbalance",
+      "subject": "authorship_bus_factor",
+      "value": 1,
+      "unit": "people",
+      "detail": "Fewest people covering 0.5 of authored pull requests. Null when the total is 0."
+    },
+    {
+      "id": "fact:loadbalance:authorship_gini",
+      "kind": "loadbalance",
+      "subject": "authorship_gini",
+      "value": 0.5,
+      "unit": "ratio",
+      "detail": "Population Gini of authored pull requests across 2 people, idle teammates included. 0 is uniform. Null when there is nothing to share."
+    },
+    {
+      "id": "fact:loadbalance:reviews_bus_factor",
+      "kind": "loadbalance",
+      "subject": "reviews_bus_factor",
+      "value": 1,
+      "unit": "people",
+      "detail": "Fewest people covering 0.5 of non-self review submissions. Null when the total is 0."
+    },
+    {
+      "id": "fact:loadbalance:reviews_gini",
+      "kind": "loadbalance",
+      "subject": "reviews_gini",
+      "value": 0.5,
+      "unit": "ratio",
+      "detail": "Population Gini of non-self review submissions across 2 people, idle teammates included. 0 is uniform. Null when there is nothing to share."
+    },
+    {
+      "id": "fact:reciprocity:ada",
+      "kind": "reciprocity",
+      "subject": "ada",
+      "value": 0,
+      "unit": "ratio",
+      "detail": "Reciprocity score for ada: gave 1, received 0. 1 is balanced, 0 is entirely one-way."
+    },
+    {
+      "id": "fact:reciprocity:ada->grace",
+      "kind": "reciprocity",
+      "subject": "ada->grace",
+      "value": 1,
+      "unit": "pull_requests",
+      "detail": "ada reviewed 1 distinct pull request by grace; reverse weight 0; ratio null; flagged=false."
+    },
+    {
+      "id": "fact:reciprocity:grace",
+      "kind": "reciprocity",
+      "subject": "grace",
+      "value": 0,
+      "unit": "ratio",
+      "detail": "Reciprocity score for grace: gave 0, received 1. 1 is balanced, 0 is entirely one-way."
+    },
+    {
+      "id": "fact:rubberstamp:ada",
+      "kind": "rubberstamp",
+      "subject": "ada",
+      "value": 1,
+      "unit": "ratio",
+      "detail": "Rubber-stamp rate for ada: 1 of 1 eligible approvals was faster than 300s, silent, and larger than 100 lines."
+    },
+    {
+      "id": "fact:rubberstamp:ada->grace",
+      "kind": "rubberstamp",
+      "subject": "ada->grace",
+      "value": 1,
+      "unit": "ratio",
+      "detail": "Rubber-stamp rate for ada approving grace: 1 of 1 eligible approvals flagged."
+    }
+  ],
+  "expect": {
+    "confidence": {
+      "min": 0,
+      "max": 0.4
+    },
+    "requiredEvidence": [
+      "fact:rubberstamp:ada",
+      "fact:reciprocity:ada->grace",
+      "fact:cycletime:first_review_n"
+    ],
+    "hypothesis": "null"
+  }
+}
