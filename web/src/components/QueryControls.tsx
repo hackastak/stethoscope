@@ -75,6 +75,7 @@ export function QueryControls({
       return;
     }
     await queryClient.invalidateQueries({ queryKey: ["insights", body] });
+    await queryClient.invalidateQueries({ queryKey: ["insights", "graph", body] });
     setSubmitted(body);
     onWindowChange?.(body);
   }

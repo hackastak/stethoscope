@@ -4,6 +4,7 @@ import { api, type WindowQuery } from "./api/client.js";
 import { healthQuery } from "./api/queries.js";
 import { InsightTables } from "./components/InsightTables.js";
 import { QueryControls } from "./components/QueryControls.js";
+import { ReciprocityGraph } from "./components/ReciprocityGraph.js";
 
 function apiStatus(state: { isPending: boolean; isError: boolean; error: Error | null }): string {
   if (state.isPending) return "checking…";
@@ -27,6 +28,7 @@ export function App() {
       </p>
       <QueryControls onWindowChange={setWindow} />
       <InsightTables window={window} />
+      <ReciprocityGraph window={window} />
     </main>
   );
 }

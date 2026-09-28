@@ -103,3 +103,31 @@ th:not(:first-child),
 td:not(:first-child) {
   text-align: right;
 }
+
+.legend {
+  display: flex;
+  gap: 1.25rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0;
+}
+
+.swatch {
+  display: inline-block;
+  width: 1.75rem;
+  margin-right: 0.4rem;
+  border-top: 3px solid #78716c;
+  vertical-align: middle;
+}
+
+.swatch[data-flagged="true"] {
+  border-top-color: #9f1239;
+  border-top-style: dashed;
+}
+
+.graph-frame {
+  height: 420px;
+  border: 1px solid #e7e5e4;
+  background: #faf7f2;
+  overflow: hidden;
+}
