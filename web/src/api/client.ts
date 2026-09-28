@@ -1,6 +1,8 @@
 import type { Problem } from "../../../src/lib/errors.js";
 import type { InsightsGraphResponse, InsightsResponse } from "../../../src/schemas/insights.js";
 
+export type { InsightsGraphResponse, InsightsResponse };
+
 /** Mirrors `RepoSummary` in `src/github/repos.ts`. No response schema exists yet. */
 export type RepoVisibility = "public" | "private" | "internal";
 

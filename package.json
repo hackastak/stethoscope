@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run && npm test --prefix web",
     "eval": "tsx eval/run.ts",
     "db:generate": "drizzle-kit generate"
   },

@@ -23,3 +23,46 @@ h1 {
 p {
   margin: 0.75rem 0;
 }
+
+form,
+fieldset {
+  display: grid;
+  gap: 0.75rem;
+}
+
+fieldset {
+  margin: 0;
+  border: 1px solid #e7e5e4;
+  padding: 0.75rem 1rem 1rem;
+}
+
+legend {
+  padding: 0 0.35rem;
+}
+
+label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  opacity: 0.6;
+}
+
+[data-status="error"] {
+  color: #9f1239;
+}
+
+[data-status="success"],
+[data-status="ok"] {
+  color: #3f6212;
+}

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api/client.js";
 import { healthQuery } from "./api/queries.js";
+import { QueryControls } from "./components/QueryControls.js";
 
 function apiStatus(state: { isPending: boolean; isError: boolean; error: Error | null }): string {
   if (state.isPending) return "checking…";
@@ -14,13 +15,14 @@ export function App() {
   return (
     <main>
       <h1>Stethoscope</h1>
-      <p>Pick a repo and a date range in the next step. This page only checks the API.</p>
+      <p>Pick one of your repos, or type any public owner/repo, then sync a UTC date range.</p>
       <p>
         API{" "}
         <span data-status={health.isSuccess ? "ok" : health.isError ? "error" : "pending"}>
           {apiStatus(health)}
         </span>
       </p>
+      <QueryControls />
     </main>
   );
 }
