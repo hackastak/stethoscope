@@ -1,7 +1,8 @@
 import type { Problem } from "../../../src/lib/errors.js";
 import type { InsightsGraphResponse, InsightsResponse } from "../../../src/schemas/insights.js";
+import type { NarrativeResponse } from "../../../src/schemas/narrative.js";
 
-export type { InsightsGraphResponse, InsightsResponse };
+export type { InsightsGraphResponse, InsightsResponse, NarrativeResponse };
 
 /** Mirrors `RepoSummary` in `src/github/repos.ts`. No response schema exists yet. */
 export type RepoVisibility = "public" | "private" | "internal";
@@ -70,6 +71,8 @@ export type ApiClient = {
   sync: (body: SyncRequest) => Promise<SyncResponse>;
   insights: (query: WindowQuery) => Promise<InsightsResponse>;
   insightsGraph: (query: WindowQuery) => Promise<InsightsGraphResponse>;
+  /** POST. Omitted bounds use the API default window. Does not run unless called. */
+  narrative: (query: WindowQuery) => Promise<NarrativeResponse>;
 };
 
 function stripTrailingSlash(baseUrl: string): string {
@@ -164,6 +167,11 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
       request<InsightsResponse>(fetchImpl, baseUrl, `/insights${queryString(query)}`),
     insightsGraph: (query) =>
       request<InsightsGraphResponse>(fetchImpl, baseUrl, `/insights/graph${queryString(query)}`),
+    narrative: (query) =>
+      request<NarrativeResponse>(fetchImpl, baseUrl, "/narrative", {
+        method: "POST",
+        body: JSON.stringify(query),
+      }),
   };
 }
 

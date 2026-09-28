@@ -3,6 +3,7 @@ import { useState } from "react";
 import { api, type WindowQuery } from "./api/client.js";
 import { healthQuery } from "./api/queries.js";
 import { InsightTables } from "./components/InsightTables.js";
+import { NarrativePanel } from "./components/NarrativePanel.js";
 import { QueryControls } from "./components/QueryControls.js";
 import { ReciprocityGraph } from "./components/ReciprocityGraph.js";
 
@@ -29,6 +30,7 @@ export function App() {
       <QueryControls onWindowChange={setWindow} />
       <InsightTables window={window} />
       <ReciprocityGraph window={window} />
+      <NarrativePanel window={window} />
     </main>
   );
 }

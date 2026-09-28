@@ -61,6 +61,9 @@ function client(overrides: Partial<ApiClient> = {}): ApiClient {
     insightsGraph: async () => {
       throw new Error("not used");
     },
+    narrative: async () => {
+      throw new Error("not used");
+    },
     ...overrides,
   };
 }
