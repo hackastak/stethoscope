@@ -1,0 +1,56 @@
+# Quality gate for main. Does not run `npm run eval` (T25): that script can call
+# the real LLM provider. Eval stays a local/manual command.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: lint, typecheck, test
+    runs-on: ubuntu-latest
+    env:
+      # Placeholders only. Tests use an in-memory DB and mocked GitHub/LLM clients.
+      # GITHUB_TOKEN here replaces the automatic Actions token so a test cannot
+      # call GitHub with the workflow credential. actions/checkout still receives
+      # the real token via github.token, not this env var.
+      GITHUB_TOKEN: ci-dummy-not-a-secret
+      ANTHROPIC_API_KEY: ci-dummy-not-a-secret
+      LLM_MODEL: claude-sonnet-5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+
+      - name: Install API dependencies
+        run: npm ci
+
+      - name: Install web dependencies
+        run: npm ci --prefix web
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
