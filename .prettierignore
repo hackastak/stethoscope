@@ -1,6 +1,7 @@
 dist/
 web/dist/
 node_modules/
+web/node_modules/
 drizzle/
 coverage/
 *.sqlite
