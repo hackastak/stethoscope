@@ -1,2 +1,6 @@
-// Barrel for the LLM layer (provider interface, Anthropic impl, prompt, narrative). Populated in Phase 5.
-export {};
+export {
+  createAnthropicProvider,
+  MAX_OUTPUT_TOKENS,
+  type AnthropicProviderOptions,
+} from "./anthropic.js";
+export { LlmOutputError, LlmRequestError, type LLMProvider } from "./provider.js";
