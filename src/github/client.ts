@@ -7,6 +7,36 @@ const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_MAX_BACKOFF_MS = 60_000;
 const DEFAULT_MAX_PAGES = 100;
 
+// Transient connection failures surfaced by undici/fetch. These are not
+// GitHub API responses, so they carry no status and are safe to retry for the
+// read-only (GET) requests this client makes.
+const RETRYABLE_NETWORK_CODES = new Set([
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ETIMEDOUT",
+  "EPIPE",
+  "EAI_AGAIN",
+  "ENETUNREACH",
+  "ENOTFOUND",
+  "UND_ERR_SOCKET",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_BODY_TIMEOUT",
+]);
+
+const RETRYABLE_NETWORK_MESSAGES = [
+  "other side closed",
+  "socket hang up",
+  "network socket disconnected",
+  "connect timeout",
+  "headers timeout",
+  "body timeout",
+  "fetch failed",
+];
+
+// Transient upstream errors from GitHub or an intermediary proxy.
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
+
 export type GitHubLog = {
   warn: (message: string) => void;
 };
@@ -67,6 +97,32 @@ function isRateLimited(error: unknown): error is RequestError {
   return /secondary rate limit|rate limit exceeded/i.test(error.message);
 }
 
+function exponentialBackoff(attempt: number, maxBackoffMs: number): number {
+  return Math.min(1000 * 2 ** attempt, maxBackoffMs);
+}
+
+function isRetryableNetworkError(error: unknown): boolean {
+  if (error instanceof RequestError && RETRYABLE_STATUS.has(error.status)) {
+    return true;
+  }
+  // undici often wraps the underlying socket error in `cause`, so walk the chain.
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current instanceof Error && !seen.has(current)) {
+    seen.add(current);
+    const code = (current as { code?: unknown }).code;
+    if (typeof code === "string" && RETRYABLE_NETWORK_CODES.has(code)) {
+      return true;
+    }
+    const message = current.message.toLowerCase();
+    if (RETRYABLE_NETWORK_MESSAGES.some((fragment) => message.includes(fragment))) {
+      return true;
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 function delayFor(error: RequestError, attempt: number, options: RetryOptions): number {
   const headers = error.response?.headers;
   const retryAfter = headerValue(headers, "retry-after");
@@ -89,7 +145,7 @@ function delayFor(error: RequestError, attempt: number, options: RetryOptions): 
     }
   }
 
-  return Math.min(1000 * 2 ** attempt, options.maxBackoffMs);
+  return exponentialBackoff(attempt, options.maxBackoffMs);
 }
 
 function githubError(statusCode: number, message: string): Error & { statusCode: number } {
@@ -97,9 +153,7 @@ function githubError(statusCode: number, message: string): Error & { statusCode:
 }
 
 function isNormalized(error: unknown): error is Error & { statusCode: number } {
-  return (
-    error instanceof Error && "statusCode" in error && typeof error.statusCode === "number"
-  );
+  return error instanceof Error && "statusCode" in error && typeof error.statusCode === "number";
 }
 
 function notFoundMessage(owner: unknown, repo: unknown, token: string): string {
@@ -186,6 +240,15 @@ export function createGitHubClient(
         }
         if (isRateLimited(error)) {
           throw githubError(429, rateLimitMessage(delayFor(error, attempt, retry)));
+        }
+        if (isRetryableNetworkError(error) && attempt < retry.maxRetries) {
+          const delay = exponentialBackoff(attempt, retry.maxBackoffMs);
+          retry.log.warn(
+            `GitHub request failed for ${retryTarget(requestOptions, retry.token)}; retrying in ${delay}ms`,
+          );
+          await retry.sleep(delay);
+          attempt += 1;
+          continue;
         }
         throw normalizeError(error, requestOptions, retry.token);
       }

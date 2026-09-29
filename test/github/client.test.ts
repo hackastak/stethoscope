@@ -205,6 +205,98 @@ describe("createGitHubClient", () => {
     expect(sleep).not.toHaveBeenCalled();
   });
 
+  it("retries a dropped connection ('other side closed'), then succeeds", async () => {
+    const delays: number[] = [];
+    let calls = 0;
+    const fetch = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) {
+        throw Object.assign(new Error("other side closed"), { code: "UND_ERR_SOCKET" });
+      }
+      return jsonResponse({ status: 200, body: { id: 9 } });
+    });
+    const client = createGitHubClient(config(), {
+      fetch,
+      sleep: async (ms) => {
+        delays.push(ms);
+      },
+    });
+
+    await expect(client.request("GET /user")).resolves.toEqual({ id: 9 });
+    expect(calls).toBe(2);
+    expect(delays).toEqual([1_000]);
+  });
+
+  it("retries a transient network error surfaced through the cause chain", async () => {
+    let calls = 0;
+    const fetch = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) {
+        throw Object.assign(new Error("fetch failed"), {
+          cause: Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" }),
+        });
+      }
+      return jsonResponse({ status: 200, body: { ok: true } });
+    });
+    const client = createGitHubClient(config(), { fetch, sleep: async () => {} });
+
+    await expect(client.request("GET /user")).resolves.toEqual({ ok: true });
+    expect(calls).toBe(2);
+  });
+
+  it("retries a transient upstream 503, then succeeds", async () => {
+    let calls = 0;
+    const fetch = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) {
+        return jsonResponse({ status: 503, body: { message: "Service Unavailable" } });
+      }
+      return jsonResponse({ status: 200, body: { ok: true } });
+    });
+    const client = createGitHubClient(config(), { fetch, sleep: async () => {} });
+
+    await expect(client.request("GET /user")).resolves.toEqual({ ok: true });
+    expect(calls).toBe(2);
+  });
+
+  it("caps network retries and surfaces a normalized error with backoff", async () => {
+    const delays: number[] = [];
+    const fetch = vi.fn(async () => {
+      throw Object.assign(new Error(`other side closed ${TOKEN}`), { code: "UND_ERR_SOCKET" });
+    });
+    const client = createGitHubClient(config(), {
+      fetch,
+      maxRetries: 3,
+      sleep: async (ms) => {
+        delays.push(ms);
+      },
+    });
+
+    const error = await client.request("GET /user").then(
+      () => {
+        throw new Error("expected a network error");
+      },
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toMatchObject({ statusCode: 500 });
+    expect(fetch).toHaveBeenCalledTimes(4);
+    expect(delays).toEqual([1_000, 2_000, 4_000]);
+    expect(error instanceof Error ? error.message : "").not.toContain(TOKEN);
+  });
+
+  it("does not retry a non-transient error", async () => {
+    const sleep = vi.fn(async () => {});
+    const fetch = vi.fn(async () =>
+      jsonResponse({ status: 422, body: { message: "Validation Failed" } }),
+    );
+    const client = createGitHubClient(config(), { fetch, sleep });
+
+    await expect(client.request("GET /user")).rejects.toMatchObject({ statusCode: 422 });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(sleep).not.toHaveBeenCalled();
+  });
+
   it("paginates until the next link disappears and does not mutate parameters", async () => {
     const parameters = { owner: "octocat", repo: "hello", state: "all" };
     const fetch = vi.fn(async (input: RequestInfo | URL) => {
