@@ -118,6 +118,56 @@ async function enrich(
   };
 }
 
+type ListSort = {
+  state: "open" | "closed";
+  sort: "updated" | "created";
+  direction: "asc" | "desc";
+};
+
+/**
+ * Page one `state`-filtered listing in the given sort order, collecting the
+ * numbers of every PR whose lifetime overlaps the window. `reachedEnd` is the
+ * early-termination predicate: because the listing is sorted, the first PR that
+ * satisfies it guarantees no later PR can overlap, so paging stops.
+ */
+async function collectWindowNumbers(
+  client: GitHubClient,
+  query: FetchPullRequestsQuery,
+  perPage: number,
+  maxPages: number,
+  list: ListSort,
+  reachedEnd: (pull: ListedPull) => boolean,
+  sink: Set<number>,
+): Promise<void> {
+  for (let page = 1; page <= maxPages; page += 1) {
+    const batch = await client.request<ListedPull[]>(LIST_ROUTE, {
+      owner: query.owner,
+      repo: query.repo,
+      state: list.state,
+      sort: list.sort,
+      direction: list.direction,
+      per_page: perPage,
+      page,
+    });
+    if (batch.length === 0) break;
+
+    let done = false;
+    for (const pull of batch) {
+      if (reachedEnd(pull)) {
+        done = true;
+        break;
+      }
+      if (overlaps(pull, query.since, query.until)) {
+        sink.add(pull.number);
+      }
+    }
+    if (done || batch.length < perPage) break;
+    if (page === maxPages) {
+      throw githubError(500, "GitHub pagination exceeded the page cap");
+    }
+  }
+}
+
 export async function fetchPullRequests(
   client: GitHubClient,
   query: FetchPullRequestsQuery,
@@ -129,35 +179,33 @@ export async function fetchPullRequests(
 
   const perPage = options.perPage ?? DEFAULT_PER_PAGE;
   const maxPages = options.maxPages ?? DEFAULT_MAX_PAGES;
-  const numbers: number[] = [];
+  const numbers = new Set<number>();
 
-  for (let page = 1; page <= maxPages; page += 1) {
-    const batch = await client.request<ListedPull[]>(LIST_ROUTE, {
-      owner: query.owner,
-      repo: query.repo,
-      state: "all",
-      sort: "updated",
-      direction: "desc",
-      per_page: perPage,
-      page,
-    });
-    if (batch.length === 0) break;
+  // Closed/merged PRs have a bounded lifetime end (closed_at/merged_at, always
+  // <= updated_at), so scanning newest-updated first lets us stop as soon as a
+  // PR's last update falls before the window: everything older is out too.
+  await collectWindowNumbers(
+    client,
+    query,
+    perPage,
+    maxPages,
+    { state: "closed", sort: "updated", direction: "desc" },
+    (pull) => epochSeconds(pull.updated_at, "updated_at") < query.since,
+    numbers,
+  );
 
-    let passedWindow = false;
-    for (const pull of batch) {
-      if (epochSeconds(pull.updated_at, "updated_at") < query.since) {
-        passedWindow = true;
-        break;
-      }
-      if (overlaps(pull, query.since, query.until)) {
-        numbers.push(pull.number);
-      }
-    }
-    if (passedWindow || batch.length < perPage) break;
-    if (page === maxPages) {
-      throw githubError(500, "GitHub pagination exceeded the page cap");
-    }
-  }
+  // Open PRs run to +infinity, so updated_at says nothing about overlap — a
+  // dormant PR opened before `since` and untouched since still overlaps. Scan
+  // by creation ascending and stop only once a PR was created after the window.
+  await collectWindowNumbers(
+    client,
+    query,
+    perPage,
+    maxPages,
+    { state: "open", sort: "created", direction: "asc" },
+    (pull) => epochSeconds(pull.created_at, "created_at") > query.until,
+    numbers,
+  );
 
   const enriched: PullRequestDto[] = [];
   for (const number of numbers) {
