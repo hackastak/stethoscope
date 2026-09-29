@@ -1,3 +1,4 @@
+export { GHOST_ACTOR, toActorOrGhost, type RawGitHubUser } from "./actor.js";
 export {
   createGitHubClient,
   type GitHubClient,

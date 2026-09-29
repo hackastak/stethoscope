@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { GitHubClient } from "../../src/github/index.js";
-import { fetchPullRequests } from "../../src/github/index.js";
+import { GHOST_ACTOR, fetchPullRequests, type GitHubClient } from "../../src/github/index.js";
 
 const SINCE = Date.parse("2023-11-01T00:00:00Z") / 1000;
 const UNTIL = Date.parse("2023-11-30T23:59:59Z") / 1000;
@@ -331,6 +330,33 @@ describe("fetchPullRequests", () => {
     });
 
     expect(pulls.map((pull) => pull.number)).toEqual([1, 2]);
+  });
+
+  it("records a pull request with a deleted author as ghost", async () => {
+    const github = client({
+      "GET /repos/{owner}/{repo}/pulls": () => [summary({ id: 9, number: 9 })],
+      "GET /repos/{owner}/{repo}/pulls/{pull_number}": () => ({
+        id: 9,
+        number: 9,
+        state: "closed",
+        created_at: "2023-11-15T00:00:00Z",
+        closed_at: "2023-11-16T00:00:00Z",
+        merged_at: "2023-11-16T00:00:00Z",
+        additions: 10,
+        deletions: 1,
+        changed_files: 1,
+        user: null,
+      }),
+    });
+
+    const pulls = await fetchPullRequests(github, {
+      owner: "octocat",
+      repo: "Hello-World",
+      since: SINCE,
+      until: UNTIL,
+    });
+
+    expect(pulls.map((pull) => pull.author)).toEqual([GHOST_ACTOR]);
   });
 
   it("fails when an overlapping PR has no commit timestamp", async () => {

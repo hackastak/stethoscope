@@ -9,7 +9,7 @@ import {
   syncRuns,
   users,
 } from "../../src/db/schema.js";
-import type { GitHubClient } from "../../src/github/index.js";
+import { GHOST_ACTOR, type GitHubClient } from "../../src/github/index.js";
 import { syncRepo } from "../../src/sync/index.js";
 
 const LIST = "GET /repos/{owner}/{repo}/pulls";
@@ -292,6 +292,47 @@ describe("syncRepo", () => {
         .all()
         .map((row) => row.number),
     ).toEqual([7]);
+    client.close();
+  });
+
+  it("stores a deleted review author as ghost and still succeeds", async () => {
+    const client = migrated();
+    const data = scenario({
+      reviews: {
+        7: [
+          {
+            id: 191056424,
+            state: "COMMENTED",
+            submitted_at: "2023-11-19T00:00:00Z",
+            body: "",
+            user: null,
+          },
+        ],
+      },
+      comments: { 7: [] },
+    });
+
+    const result = await syncRepo(github(data), client.db, {
+      owner: "acme",
+      repo: "widgets",
+      since: SINCE,
+      until: UNTIL,
+    });
+
+    expect(result.status).toBe("succeeded");
+    expect(result.reviewCount).toBe(1);
+    expect(client.db.select().from(users).all()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          githubId: GHOST_ACTOR.githubId,
+          login: GHOST_ACTOR.login,
+          isBot: false,
+        }),
+      ]),
+    );
+    expect(client.db.select().from(reviews).all()).toEqual([
+      expect.objectContaining({ githubId: 191056424, commentCount: 0 }),
+    ]);
     client.close();
   });
 

@@ -1,22 +1,12 @@
+import { toActorOrGhost, type RawGitHubUser } from "./actor.js";
 import type { GitHubClient } from "./client.js";
-import type {
-  FetchPullRequestsOptions,
-  FetchPullRequestsQuery,
-  GitHubActor,
-  PullRequestDto,
-} from "./types.js";
+import type { FetchPullRequestsOptions, FetchPullRequestsQuery, PullRequestDto } from "./types.js";
 
 const DEFAULT_PER_PAGE = 100;
 const DEFAULT_MAX_PAGES = 100;
 const LIST_ROUTE = "GET /repos/{owner}/{repo}/pulls";
 const DETAIL_ROUTE = "GET /repos/{owner}/{repo}/pulls/{pull_number}";
 const COMMITS_ROUTE = "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits";
-
-type RawUser = {
-  id?: number;
-  login?: string;
-  type?: string;
-};
 
 type ListedPull = {
   number: number;
@@ -36,7 +26,7 @@ type DetailedPull = {
   additions: number;
   deletions: number;
   changed_files: number;
-  user: RawUser | null;
+  user: RawGitHubUser | null;
 };
 
 type RawCommit = {
@@ -69,14 +59,6 @@ function overlaps(pull: ListedPull, since: number, until: number): boolean {
   const merged = optionalEpoch(pull.merged_at, "merged_at");
   const end = closed ?? merged ?? Number.POSITIVE_INFINITY;
   return start <= until && end >= since;
-}
-
-function actor(user: RawUser | null, pullNumber: number): GitHubActor {
-  if (!user || typeof user.id !== "number" || !user.login) {
-    throw githubError(500, `Pull request #${pullNumber} is missing an author`);
-  }
-  const isBot = user.type === "Bot" || user.login.endsWith("[bot]");
-  return { githubId: user.id, login: user.login, isBot };
 }
 
 function pullState(state: string, pullNumber: number): PullRequestDto["state"] {
@@ -123,7 +105,7 @@ async function enrich(
   return {
     githubId: detail.id,
     number: detail.number,
-    author: actor(detail.user, pullNumber),
+    author: toActorOrGhost(detail.user),
     state: pullState(detail.state, pullNumber),
     createdAt: epochSeconds(detail.created_at, "created_at"),
     readyAt: null,

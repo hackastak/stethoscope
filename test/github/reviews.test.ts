@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { GitHubClient } from "../../src/github/index.js";
-import { fetchReviews } from "../../src/github/index.js";
+import { GHOST_ACTOR, fetchReviews, type GitHubClient } from "../../src/github/index.js";
 
 const REVIEWS = "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews";
 const COMMENTS = "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments";
@@ -260,6 +259,75 @@ describe("fetchReviews", () => {
       fetchReviews(github, { owner: "octocat", repo: "hello", pullNumbers: [] }),
     ).resolves.toEqual([]);
     expect(github.paginate).not.toHaveBeenCalled();
+  });
+
+  it("records a deleted author as ghost and still counts that comment", async () => {
+    const github = client({
+      [REVIEWS]: {
+        12: [
+          {
+            id: 191056424,
+            state: "COMMENTED",
+            submitted_at: "2020-06-01T00:00:00Z",
+            body: "",
+            user: null,
+          },
+          {
+            id: 191056425,
+            state: "APPROVED",
+            submitted_at: "2020-06-01T01:00:00Z",
+            body: "ok",
+            user: { id: 2, login: "ada", type: "User" },
+          },
+        ],
+      },
+      [COMMENTS]: {
+        12: [
+          {
+            id: 88,
+            pull_request_review_id: 191056424,
+            created_at: "2020-06-01T00:02:00Z",
+            user: null,
+          },
+        ],
+      },
+    });
+
+    const [activity] = await fetchReviews(github, {
+      owner: "octocat",
+      repo: "Hello-World",
+      pullNumbers: [12],
+    });
+
+    expect(activity?.reviews).toEqual([
+      {
+        githubId: 191056424,
+        pullNumber: 12,
+        reviewer: GHOST_ACTOR,
+        state: "COMMENTED",
+        submittedAt: Date.parse("2020-06-01T00:00:00Z") / 1000,
+        bodyLen: 0,
+        commentCount: 1,
+      },
+      {
+        githubId: 191056425,
+        pullNumber: 12,
+        reviewer: { githubId: 2, login: "ada", isBot: false },
+        state: "APPROVED",
+        submittedAt: Date.parse("2020-06-01T01:00:00Z") / 1000,
+        bodyLen: 2,
+        commentCount: 0,
+      },
+    ]);
+    expect(activity?.reviewComments).toEqual([
+      {
+        githubId: 88,
+        pullNumber: 12,
+        reviewGithubId: 191056424,
+        reviewer: GHOST_ACTOR,
+        createdAt: Date.parse("2020-06-01T00:02:00Z") / 1000,
+      },
+    ]);
   });
 
   it("rejects a submitted review with no timestamp or an unexpected state", async () => {

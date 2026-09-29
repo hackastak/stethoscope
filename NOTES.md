@@ -38,7 +38,7 @@ Main decisions:
 - SQLite, so a local run has no second service. Metric functions take loaded rows. They do not embed SQL.
 - One token in the environment, never in the browser and never in the repo. See Access.
 - Sync is on demand. There is no worker. The upsert is the seam a schedule would call.
-- Bots are stored and excluded from the metrics. A missing author on a review currently fails the sync before any rows are written. That is a known hole, called out below.
+- Bots are stored and excluded from the metrics. A pull, review, or comment with no author is stored as GitHub's ghost user and the sync continues. Distinct deleted accounts collapse to that one login.
 - Thresholds come from the environment (`FAST_APPROVAL_SECONDS=300`, `MIN_PR_SIZE=100`, `MIN_RECIPROCITY_INTERACTIONS=3`). They are not per-request overrides.
 
 ## Metrics
@@ -82,7 +82,6 @@ Login with GitHub is the hosted version, and it is not built. It would be a GitH
 ## What I'd do next
 
 - Read the issue timeline during sync and set `ready_at` from the ready-for-review event, so draft time is not counted as waiting for review.
-- Stop failing the whole sync when a review has no author. A 2020 window on `octocat/Hello-World` returned 500 `Review 191056424 is missing an author` and wrote nothing. Skip or record that review and continue.
 - Add a scheduled sync that calls the same upsert. The store already separates fetch from query.
 - For a hosted deploy, swap the database driver and the table definitions from `better-sqlite3` / `sqliteTable` to Drizzle's Postgres driver. The metric functions do not change. Docker shows up at that point: a Postgres service plus the API. It is absent now because SQLite needs no extra process. This is not a one-line swap. The schema imports `drizzle-orm/sqlite-core`, including integer booleans and SQL checks.
 - Plot the same facts across successive windows. Add a second forge behind the fetch interface. Keep the deterministic eval, and add a graded rubric only as a second pass. `npm run eval` stays manual. It can spend a real model call, so CI does not run it.

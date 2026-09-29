@@ -30,6 +30,16 @@ export function redactSecrets(value: string, secrets: string[]): string {
   );
 }
 
+/** Startup failures go to stderr, not the pino logger. Scrub env secrets before that write. */
+export function formatStartupError(error: unknown, env: NodeJS.Dict<string> = process.env): string {
+  const message =
+    error instanceof Error && error.message.length > 0 ? error.message : String(error);
+  const secrets = [env.GITHUB_TOKEN, env.ANTHROPIC_API_KEY].filter(
+    (value): value is string => typeof value === "string" && value.length > 0,
+  );
+  return redactSecrets(message, secrets);
+}
+
 export function errorToProblem(
   error: unknown,
   { secrets }: { production: boolean; secrets: string[] },

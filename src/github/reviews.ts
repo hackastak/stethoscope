@@ -1,7 +1,7 @@
+import { toActorOrGhost, type RawGitHubUser } from "./actor.js";
 import type { GitHubClient } from "./client.js";
 import type {
   FetchReviewsQuery,
-  GitHubActor,
   PullRequestReviewsDto,
   ReviewCommentDto,
   ReviewDto,
@@ -13,25 +13,19 @@ const COMMENTS_ROUTE = "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments";
 
 const REVIEW_STATES = ["APPROVED", "CHANGES_REQUESTED", "COMMENTED", "DISMISSED"] as const;
 
-type RawUser = {
-  id?: number;
-  login?: string;
-  type?: string;
-};
-
 type RawReview = {
   id?: number;
   state?: string;
   submitted_at?: string | null;
   body?: string | null;
-  user?: RawUser | null;
+  user?: RawGitHubUser | null;
 };
 
 type RawComment = {
   id?: number;
   pull_request_review_id?: number | null;
   created_at?: string | null;
-  user?: RawUser | null;
+  user?: RawGitHubUser | null;
 };
 
 function githubError(statusCode: number, message: string): Error & { statusCode: number } {
@@ -44,17 +38,6 @@ function epochSeconds(iso: string, label: string): number {
     throw githubError(500, `GitHub returned an invalid ${label}`);
   }
   return Math.floor(parsed / 1000);
-}
-
-function actor(user: RawUser | null | undefined, label: string): GitHubActor {
-  if (!user || typeof user.id !== "number" || !user.login) {
-    throw githubError(500, `${label} is missing an author`);
-  }
-  return {
-    githubId: user.id,
-    login: user.login,
-    isBot: user.type === "Bot" || user.login.endsWith("[bot]"),
-  };
 }
 
 function isReviewState(state: string): state is ReviewState {
@@ -74,7 +57,7 @@ function reviewDto(raw: RawReview, pullNumber: number, comments: RawComment[]): 
   return {
     githubId: raw.id,
     pullNumber,
-    reviewer: actor(raw.user, `Review ${raw.id}`),
+    reviewer: toActorOrGhost(raw.user),
     state: raw.state,
     submittedAt: epochSeconds(raw.submitted_at, "submitted_at"),
     bodyLen: raw.body?.length ?? 0,
@@ -93,7 +76,7 @@ function commentDto(raw: RawComment, pullNumber: number): ReviewCommentDto {
     githubId: raw.id,
     pullNumber,
     reviewGithubId: raw.pull_request_review_id ?? null,
-    reviewer: actor(raw.user, `Review comment ${raw.id}`),
+    reviewer: toActorOrGhost(raw.user),
     createdAt: epochSeconds(raw.created_at, "created_at"),
   };
 }

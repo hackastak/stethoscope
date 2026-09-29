@@ -13,6 +13,25 @@ import { narrativeRoutes, type NarrativeRateLimit } from "./routes/narrative.js"
 import { reposRoutes } from "./routes/repos.js";
 import { syncRoutes } from "./routes/sync.js";
 
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function originsOf(value: string | string[] | undefined): string[] {
+  if (value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+/** Vite forwards the browser Origin. Curl sends none. Anything else must not mutate. */
+function isLocalOrigin(origin: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  return url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1";
+}
+
 export type BuildAppOptions = {
   config: Config;
   logger?: false;
@@ -37,14 +56,23 @@ export async function buildApp(options: BuildAppOptions) {
   const secrets = [options.config.githubToken, options.config.anthropicApiKey];
   const production = options.production ?? process.env.NODE_ENV === "production";
 
+  app.addHook("onRequest", async (request, reply) => {
+    if (!MUTATING_METHODS.has(request.method)) return;
+    const origins = originsOf(request.headers.origin);
+    if (origins.length === 0 || origins.every(isLocalOrigin)) return;
+    request.log.warn("Cross-origin request rejected");
+    return reply.status(403).send(problem(403, "Cross-origin request rejected"));
+  });
+
   app.setNotFoundHandler((request, reply) => {
     const path = request.url.split("?")[0] ?? request.url;
     void reply.status(404).send(problem(404, `Route ${request.method} ${path} not found`));
   });
 
   app.setErrorHandler((error, request, reply) => {
-    request.log.error(error);
     const body = errorToProblem(error, { production, secrets });
+    if (body.status >= 500) request.log.error(error);
+    else request.log.warn({ statusCode: body.status }, body.message);
     void reply.status(body.status).send(body);
   });
 

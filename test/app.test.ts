@@ -2,6 +2,7 @@ import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../src/app.js";
 import type { Config } from "../src/config.js";
+import { formatStartupError } from "../src/lib/errors.js";
 import { createLogger } from "../src/lib/logger.js";
 
 const testConfig: Config = Object.freeze({
@@ -59,7 +60,9 @@ describe("buildApp", () => {
       error: "Internal Server Error",
       message: "boom [REDACTED] [REDACTED]",
     });
-    expect(JSON.stringify(body)).not.toMatch(/stack|githubToken|ghp_test_token_aaa|sk-ant-test_key_bbb/i);
+    expect(JSON.stringify(body)).not.toMatch(
+      /stack|githubToken|ghp_test_token_aaa|sk-ant-test_key_bbb/i,
+    );
 
     await app.close();
   });
@@ -87,5 +90,72 @@ describe("buildApp", () => {
     expect(output).not.toContain(testConfig.githubToken);
     expect(output).not.toContain(testConfig.anthropicApiKey);
     expect(output).toContain("[REDACTED]");
+  });
+
+  it("redacts a token that arrives on the request URL", async () => {
+    const chunks: string[] = [];
+    const stream = new Writable({
+      write(chunk, _encoding, callback) {
+        chunks.push(String(chunk));
+        callback();
+      },
+    });
+    const app = await buildApp({ config: testConfig, logStream: stream });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/health?access_token=${testConfig.githubToken}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const output = chunks.join("");
+    expect(output).not.toContain(testConfig.githubToken);
+    expect(output).toContain("[REDACTED]");
+    await app.close();
+  });
+
+  it("rejects a cross-origin mutation and allows a local Origin", async () => {
+    const app = await buildApp({ config: testConfig, logger: false });
+
+    const rejected = await app.inject({
+      method: "POST",
+      url: "/sync",
+      headers: { origin: "https://evil.example" },
+      payload: { owner: "acme", repo: "widgets", since: "2024-01-01", until: "2024-01-02" },
+    });
+    expect(rejected.statusCode).toBe(403);
+    expect(rejected.json()).toEqual({
+      status: 403,
+      error: "Forbidden",
+      message: "Cross-origin request rejected",
+    });
+
+    const local = await app.inject({
+      method: "POST",
+      url: "/sync",
+      headers: { origin: "http://127.0.0.1:5173" },
+      payload: { owner: "acme", repo: "widgets", since: "2024-01-01", until: "2024-01-02" },
+    });
+    expect(local.statusCode).toBe(404);
+
+    const read = await app.inject({
+      method: "GET",
+      url: "/health",
+      headers: { origin: "https://evil.example" },
+    });
+    expect(read.statusCode).toBe(200);
+
+    await app.close();
+  });
+});
+
+describe("formatStartupError", () => {
+  it("redacts env tokens and does not treat an empty token as a secret", () => {
+    const message = formatStartupError(new Error(`boom ${testConfig.githubToken}`), {
+      GITHUB_TOKEN: testConfig.githubToken,
+      ANTHROPIC_API_KEY: "",
+    });
+    expect(message).toBe("boom [REDACTED]");
+    expect(message).not.toContain(testConfig.githubToken);
   });
 });
