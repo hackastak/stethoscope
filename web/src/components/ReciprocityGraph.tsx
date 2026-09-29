@@ -17,10 +17,10 @@ export type ReciprocityGraphProps = {
 
 type GraphNode = InsightsGraphResponse["nodes"][number];
 
-export const FLAGGED_EDGE_COLOR = "#9f1239";
-export const MUTUAL_EDGE_COLOR = "#78716c";
-export const NODE_COLOR = "#1c1917";
-export const GRAPH_BACKGROUND = "#faf7f2";
+export const FLAGGED_EDGE_COLOR = "#e4677c";
+export const MUTUAL_EDGE_COLOR = "#5b6b96";
+export const NODE_COLOR = "#2fc6d6";
+export const GRAPH_BACKGROUND = "#0c0f19";
 const GRAPH_HEIGHT = 420;
 
 export function reviewVolume(node: Pick<GraphNode, "reviewsGiven" | "reviewsReceived">): number {

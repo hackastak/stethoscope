@@ -18,19 +18,42 @@ export function App() {
   const [window, setWindow] = useState<WindowQuery | null>(null);
 
   return (
-    <main>
-      <h1>Stethoscope</h1>
-      <p>Pick one of your repos, or type any public owner/repo, then sync a UTC date range.</p>
-      <p>
-        API{" "}
-        <span data-status={health.isSuccess ? "ok" : health.isError ? "error" : "pending"}>
-          {apiStatus(health)}
+    <>
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            ⌇
+          </span>
+          <div>
+            <h1>Stethoscope</h1>
+            <p className="tagline">
+              Pick one of your repos, or type any public owner/repo, then sync a UTC date range.
+            </p>
+          </div>
+        </div>
+        <span
+          className="api-pill"
+          data-status={health.isSuccess ? "ok" : health.isError ? "error" : "pending"}
+        >
+          API <strong>{apiStatus(health)}</strong>
         </span>
-      </p>
-      <QueryControls onWindowChange={setWindow} />
-      <InsightTables window={window} />
-      <ReciprocityGraph window={window} />
-      <NarrativePanel window={window} />
-    </main>
+      </header>
+      <main className="page">
+        <div className="card">
+          <QueryControls onWindowChange={setWindow} />
+        </div>
+        <div className="grid">
+          <div className="card span-2">
+            <InsightTables window={window} />
+          </div>
+          <div className="card">
+            <ReciprocityGraph window={window} />
+          </div>
+          <div className="card">
+            <NarrativePanel window={window} />
+          </div>
+        </div>
+      </main>
+    </>
   );
 }
