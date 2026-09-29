@@ -257,13 +257,17 @@ describe("syncRepo", () => {
     client.close();
   });
 
-  it("rolls back the run when a write fails after an earlier insert", async () => {
+  it("handles a recycled login without aborting the run or merging the accounts", async () => {
+    // First sync stores account 1 under login "ada". Then account 1 renames away
+    // and a different account (github id 9) claims "ada". Syncing a window with
+    // account 9 must not abort on the users.login unique index: account 9 takes
+    // "ada", the stale account 1 is stashed under a per-account sentinel, and both
+    // stay distinct rows.
     const client = migrated();
     const query = { owner: "acme", repo: "widgets", since: SINCE, until: UNTIL };
     await syncRepo(github(scenario()), client.db, query, { now: () => 1_700_200_000 });
-    const before = counts(client);
 
-    const colliding = scenario({
+    const recycled = scenario({
       listed: [listedPull(8)],
       details: { 8: detail(8, user(3, "linus")) },
       commits: { 8: [{ commit: { committer: { date: COMMITTED } } }] },
@@ -281,17 +285,82 @@ describe("syncRepo", () => {
       comments: { 8: [] },
     });
 
-    await expect(
-      syncRepo(github(colliding), client.db, query, { now: () => 1_700_200_100 }),
-    ).rejects.toThrow(/UNIQUE/i);
-    expect(counts(client)).toEqual(before);
+    const result = await syncRepo(github(recycled), client.db, query, {
+      now: () => 1_700_200_100,
+    });
+
+    expect(result.status).toBe("succeeded");
+    // The window synced fully: both PRs present, the review by account 9 stored.
     expect(
       client.db
         .select()
         .from(pullRequests)
         .all()
-        .map((row) => row.number),
-    ).toEqual([7]);
+        .map((row) => row.number)
+        .sort((a, b) => a - b),
+    ).toEqual([7, 8]);
+    expect(client.db.select().from(reviews).all()).toHaveLength(2);
+
+    const usersByGithubId = new Map(
+      client.db
+        .select()
+        .from(users)
+        .all()
+        .map((row) => [row.githubId, row]),
+    );
+    // Account 9 now owns "ada"; account 1 keeps its own row under a sentinel login
+    // (no merge), and the sentinel is not a login GitHub could ever issue.
+    expect(usersByGithubId.get(9)?.login).toBe("ada");
+    expect(usersByGithubId.get(1)?.login).toBe("renamed:1");
+    expect(usersByGithubId.get(1)?.login).toContain(":");
+    expect(usersByGithubId.size).toBe(4);
+    client.close();
+  });
+
+  it("self-heals a stashed account when it is next synced under its current login", async () => {
+    const client = migrated();
+    const query = { owner: "acme", repo: "widgets", since: SINCE, until: UNTIL };
+    await syncRepo(github(scenario()), client.db, query, { now: () => 1_700_200_000 });
+
+    // Account 9 recycles "ada", stashing account 1.
+    const recycled = scenario({
+      listed: [listedPull(8)],
+      details: { 8: detail(8, user(3, "linus")) },
+      commits: { 8: [{ commit: { committer: { date: COMMITTED } } }] },
+      reviews: {
+        8: [
+          {
+            id: 201,
+            state: "APPROVED",
+            submitted_at: "2023-11-19T00:00:00Z",
+            body: "ship",
+            user: user(9, "ada"),
+          },
+        ],
+      },
+      comments: { 8: [] },
+    });
+    await syncRepo(github(recycled), client.db, query, { now: () => 1_700_200_100 });
+
+    // A later window sees account 1 again under its current login.
+    const renamed = scenario({
+      listed: [listedPull(9)],
+      details: { 9: detail(9, user(1, "ada-prime")) },
+      commits: { 9: [{ commit: { committer: { date: COMMITTED } } }] },
+      reviews: { 9: [] },
+      comments: { 9: [] },
+    });
+    await syncRepo(github(renamed), client.db, query, { now: () => 1_700_200_200 });
+
+    const usersByGithubId = new Map(
+      client.db
+        .select()
+        .from(users)
+        .all()
+        .map((row) => [row.githubId, row.login]),
+    );
+    expect(usersByGithubId.get(1)).toBe("ada-prime");
+    expect(usersByGithubId.get(9)).toBe("ada");
     client.close();
   });
 

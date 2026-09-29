@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import type { AppDatabase } from "./client.js";
 import type { GitHubActor, PullRequestDto, ReviewCommentDto, ReviewDto } from "../github/types.js";
 import {
@@ -35,7 +36,40 @@ export function upsertRepo(db: SyncWriter, owner: string, name: string): number 
   return requireId(row, "repo");
 }
 
+/**
+ * Sentinel login for an account whose login was recycled onto a different
+ * account. The `:` is illegal in a GitHub login, so it can never clash with a
+ * real one, and keying on the account's own (unique) github_id keeps every
+ * stashed row a distinct graph node.
+ */
+function stashedLogin(githubId: number): string {
+  return `renamed:${githubId}`;
+}
+
+/**
+ * `users.login` is unique because logins are the graph node ids. When GitHub
+ * recycles a login (account A renames away, account B takes it), the fresh
+ * fetch's login belongs to B, but our stored row for A still holds it. Free it
+ * by stashing A under a per-account sentinel so B can claim the login without
+ * merging the two accounts or aborting the whole sync. A self-heals the next
+ * time it is synced under its current login.
+ */
+function releaseRecycledLogin(db: SyncWriter, actor: GitHubActor): void {
+  const holder = db
+    .select({ id: users.id, githubId: users.githubId })
+    .from(users)
+    .where(eq(users.login, actor.login))
+    .get();
+  if (holder && holder.githubId !== actor.githubId) {
+    db.update(users)
+      .set({ login: stashedLogin(holder.githubId) })
+      .where(eq(users.id, holder.id))
+      .run();
+  }
+}
+
 export function upsertUser(db: SyncWriter, actor: GitHubActor): number {
+  releaseRecycledLogin(db, actor);
   const row = db
     .insert(users)
     .values({
