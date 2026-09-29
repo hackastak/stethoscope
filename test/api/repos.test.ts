@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../../src/app.js";
 import type { Config } from "../../src/config.js";
 import type { GitHubClient } from "../../src/github/client.js";
+import { reposResponseSchema } from "../../src/schemas/repos.js";
 
 const USER_REPOS = "GET /user/repos";
 const USERS_REPOS = "GET /users/{username}/repos";
@@ -81,6 +82,8 @@ describe("GET /repos", () => {
         pushedAt: Date.parse("2024-01-01T00:00:00Z") / 1000,
       },
     ]);
+    // The live response conforms to the shared wire contract the web imports.
+    expect(reposResponseSchema.safeParse(response.json()).success).toBe(true);
     expect(JSON.stringify(response.json())).not.toContain(testConfig.githubToken);
     await app.close();
   });

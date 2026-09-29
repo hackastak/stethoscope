@@ -1,4 +1,10 @@
+import type { RepoSummary, RepoVisibility } from "../schemas/repos.js";
 import type { GitHubClient } from "./client.js";
+
+// RepoSummary/RepoVisibility live in the dep-clean schema module (src/schemas/repos.ts)
+// so the web client can import them without pulling this Octokit-coupled file into
+// its typecheck. Re-exported here to keep the existing github barrel surface stable.
+export type { RepoSummary, RepoVisibility };
 
 const USER_REPOS = "GET /user/repos";
 const USERS_REPOS = "GET /users/{username}/repos";
@@ -10,18 +16,6 @@ const AUTHED_PARAMS = {
   sort: "pushed",
   direction: "desc",
 } as const;
-
-export type RepoVisibility = "public" | "private" | "internal";
-
-export type RepoSummary = {
-  owner: string;
-  name: string;
-  fullName: string;
-  visibility: RepoVisibility;
-  defaultBranch: string;
-  /** Unix epoch seconds. Null when GitHub has no push timestamp. */
-  pushedAt: number | null;
-};
 
 export type ListReposQuery = {
   owner?: string;

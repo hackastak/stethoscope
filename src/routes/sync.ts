@@ -2,7 +2,12 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import type { AppDatabase } from "../db/client.js";
 import type { GitHubClient } from "../github/client.js";
-import { formatSyncIssues, syncBodySchema, type SyncBody } from "../schemas/sync.js";
+import {
+  formatSyncIssues,
+  syncBodySchema,
+  type SyncBody,
+  type SyncResponse,
+} from "../schemas/sync.js";
 import { syncRepo } from "../sync/syncRepo.js";
 
 export type SyncRouteOptions = {
@@ -31,7 +36,7 @@ export const syncRoutes: FastifyPluginAsync<SyncRouteOptions> = async (app, opti
         body: syncBodySchema,
       },
     },
-    async (request) => {
+    async (request): Promise<SyncResponse> => {
       const result = await syncRepo(options.github, options.db, request.body);
       return {
         prCount: result.prCount,

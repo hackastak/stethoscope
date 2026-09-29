@@ -1,42 +1,27 @@
-import type { Problem } from "../../../src/lib/errors.js";
-import type { InsightsGraphResponse, InsightsResponse } from "../../../src/schemas/insights.js";
-import type { NarrativeResponse } from "../../../src/schemas/narrative.js";
+// Wire types come from the single backend contract module (src/contract.ts),
+// which re-exports only dep-clean schema-derived types — importing them here
+// does not pull the server graph (Octokit, Fastify, db) into the web build.
+import type {
+  HealthResponse,
+  InsightsGraphResponse,
+  InsightsResponse,
+  NarrativeResponse,
+  Problem,
+  RepoSummary,
+  RepoVisibility,
+  SyncRequest,
+  SyncResponse,
+} from "../../../src/contract.js";
 
-export type { InsightsGraphResponse, InsightsResponse, NarrativeResponse };
-
-/** Mirrors `RepoSummary` in `src/github/repos.ts`. No response schema exists yet. */
-export type RepoVisibility = "public" | "private" | "internal";
-
-export type RepoSummary = {
-  owner: string;
-  name: string;
-  fullName: string;
-  visibility: RepoVisibility;
-  defaultBranch: string;
-  /** Unix epoch seconds. Null when GitHub has no push timestamp. */
-  pushedAt: number | null;
-};
-
-/** What `POST /sync` accepts before the route transforms dates to epoch seconds. */
-export type SyncRequest = {
-  owner: string;
-  repo: string;
-  since: number | string;
-  until: number | string;
-};
-
-/** The subset `POST /sync` returns. `commentCount` stays off the wire. */
-export type SyncResponse = {
-  prCount: number;
-  reviewCount: number;
-  window: {
-    since: number;
-    until: number;
-  };
-};
-
-export type HealthResponse = {
-  status: "ok";
+export type {
+  HealthResponse,
+  InsightsGraphResponse,
+  InsightsResponse,
+  NarrativeResponse,
+  RepoSummary,
+  RepoVisibility,
+  SyncRequest,
+  SyncResponse,
 };
 
 /** Query for `/insights` and `/insights/graph`. Omitted bounds use the API default window. */

@@ -103,6 +103,21 @@ export const syncBodySchema = z
 
 export type SyncBody = z.infer<typeof syncBodySchema>;
 
+/** What the client sends: the pre-transform body, before dates become epoch seconds. */
+export type SyncRequest = z.input<typeof syncBodySchema>;
+
+/** The subset `POST /sync` returns. `commentCount` stays off the wire. */
+export const syncResponseSchema = z.object({
+  prCount: z.number(),
+  reviewCount: z.number(),
+  window: z.object({
+    since: z.number(),
+    until: z.number(),
+  }),
+});
+
+export type SyncResponse = z.infer<typeof syncResponseSchema>;
+
 export function formatSyncIssues(error: z.ZodError): string {
   if (error.issues.length === 0) return "Invalid request body";
   return error.issues

@@ -13,6 +13,22 @@ export const reposQuerySchema = z
 
 export type ReposQuery = z.infer<typeof reposQuerySchema>;
 
+/** Wire shape of one repo in the `GET /repos` response. */
+export const repoSummarySchema = z.object({
+  owner: z.string(),
+  name: z.string(),
+  fullName: z.string(),
+  visibility: z.enum(["public", "private", "internal"]),
+  defaultBranch: z.string(),
+  /** Unix epoch seconds. Null when GitHub has no push timestamp. */
+  pushedAt: z.number().nullable(),
+});
+
+export const reposResponseSchema = z.array(repoSummarySchema);
+
+export type RepoVisibility = z.infer<typeof repoSummarySchema>["visibility"];
+export type RepoSummary = z.infer<typeof repoSummarySchema>;
+
 export function formatReposIssues(error: z.ZodError): string {
   if (error.issues.length === 0) return "Invalid query";
   return error.issues

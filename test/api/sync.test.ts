@@ -5,6 +5,7 @@ import { openDatabase, type DbClient } from "../../src/db/client.js";
 import { migrateDatabase } from "../../src/db/migrate.js";
 import { pullRequests, repos, syncRuns } from "../../src/db/schema.js";
 import type { GitHubClient } from "../../src/github/client.js";
+import { syncResponseSchema } from "../../src/schemas/sync.js";
 
 const LIST = "GET /repos/{owner}/{repo}/pulls";
 const DETAIL = "GET /repos/{owner}/{repo}/pulls/{pull_number}";
@@ -114,6 +115,8 @@ describe("POST /sync", () => {
       reviewCount: 1,
       window: { since, until },
     });
+    // The live response conforms to the shared wire contract the web imports.
+    expect(syncResponseSchema.strict().safeParse(response.json()).success).toBe(true);
     expect(client.db.select().from(repos).all()).toEqual([
       expect.objectContaining({ owner: "acme", name: "widgets" }),
     ]);
