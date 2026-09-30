@@ -85,6 +85,7 @@ Login with GitHub is the hosted version, and it is not built. It would be a GitH
 - For a hosted deploy, swap the database driver and the table definitions from `better-sqlite3` / `sqliteTable` to Drizzle's Postgres driver. The metric functions do not change. Docker shows up at that point: a Postgres service plus the API. It is absent now because SQLite needs no extra process. This is not a one-line swap. The schema imports `drizzle-orm/sqlite-core`, including integer booleans and SQL checks.
 - Plot the same facts across successive windows. Add a second forge behind the fetch interface.
 - Deepen the narrative eval. It is deterministic today: shape, confidence range, and citation ids checked against the facts sent. Add a fixed set of fact lists — a full one, a thin one, an empty one, a contradictory one — each paired with the properties its answer must hold, so a prompt or model change that breaks grounding fails a check instead of a demo. The response already carries the prompt version and model; record the eval result against them so a regression is attributable. Add a graded rubric only as a second pass, kept out of the deterministic gate. `npm run eval` stays manual. It can spend a real model call, so CI does not run it.
+- Fix the dang node graph.
 
 ## What AI was used for
 
