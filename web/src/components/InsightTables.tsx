@@ -18,7 +18,9 @@ const BOARDS: readonly {
 }[] = [
   { key: "reviewers", caption: "Top reviewers", countHeader: "Reviews" },
   { key: "authors", caption: "Top authors", countHeader: "Pull requests" },
-  { key: "closers", caption: "Top closers", countHeader: "Merged pull requests" },
+  // Label reads "shippers" not "closers": the number is who authored the merged PR (who landed
+  // the work), not who pressed merge. GitHub's merger login is not stored. See leaderboards.ts.
+  { key: "closers", caption: "Top shippers", countHeader: "Merged pull requests" },
 ];
 
 const INTERVALS: readonly {
