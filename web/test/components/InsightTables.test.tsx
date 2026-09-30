@@ -296,42 +296,92 @@ describe("InsightTables", () => {
 
     const table = await screen.findByRole("table", { name: "Rubber-stamp rates by reviewer" });
 
-    // Each described header is a focusable trigger pointing at its tooltip via aria-describedby.
-    const flagged = within(table).getByRole("button", { name: "Flagged" });
-    const flaggedTipId = flagged.getAttribute("aria-describedby");
+    // The tooltip lives on a dedicated info button, separate from the sort button.
+    const flaggedInfo = within(table).getByRole("button", { name: "About Flagged" });
+    const flaggedTipId = flaggedInfo.getAttribute("aria-describedby");
     expect(flaggedTipId).toBeTruthy();
     const flaggedTip = document.getElementById(flaggedTipId as string);
     expect(flaggedTip?.getAttribute("role")).toBe("tooltip");
     expect(flaggedTip?.textContent).toContain("look like rubber-stamps");
-    // A decorative info icon signals the tooltip without polluting the header's accessible name.
-    expect(flagged.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+    expect(flaggedInfo.querySelector("svg[aria-hidden='true']")).not.toBeNull();
 
     const eligibleTipId = within(table)
-      .getByRole("button", { name: "Eligible" })
+      .getByRole("button", { name: "About Eligible" })
       .getAttribute("aria-describedby");
     expect(document.getElementById(eligibleTipId as string)?.textContent).toContain("denominator");
 
     const rateTipId = within(table)
-      .getByRole("button", { name: "Rate" })
+      .getByRole("button", { name: "About Rate" })
       .getAttribute("aria-describedby");
     expect(document.getElementById(rateTipId as string)?.textContent).toContain(
       "Flagged divided by Eligible",
     );
 
-    // "Who" is a plain header, not a tooltip trigger.
-    expect(within(table).queryByRole("button", { name: "Who" })).toBeNull();
+    // The sort buttons carry no tooltip, and "Who" has no info button at all.
+    expect(
+      within(table).getByRole("button", { name: "Flagged" }).getAttribute("aria-describedby"),
+    ).toBeNull();
+    expect(within(table).queryByRole("button", { name: "About Who" })).toBeNull();
 
-    // Closed until hovered/focused, then opens, then closes again on keyboard focus + Escape.
+    // Opens only from the info button: hover, then unhover, then keyboard focus + Escape.
     expect(flaggedTip?.getAttribute("data-open")).toBe("false");
-    await userEvent.hover(flagged);
+    await userEvent.hover(flaggedInfo);
     expect(flaggedTip?.getAttribute("data-open")).toBe("true");
-    await userEvent.unhover(flagged);
+    await userEvent.unhover(flaggedInfo);
     expect(flaggedTip?.getAttribute("data-open")).toBe("false");
 
-    fireEvent.focus(flagged);
+    fireEvent.focus(flaggedInfo);
     expect(flaggedTip?.getAttribute("data-open")).toBe("true");
-    fireEvent.keyDown(flagged, { key: "Escape" });
+    fireEvent.keyDown(flaggedInfo, { key: "Escape" });
     expect(flaggedTip?.getAttribute("data-open")).toBe("false");
+
+    // Clicking the column header to sort must NOT open the tooltip.
+    await userEvent.click(within(table).getByRole("button", { name: "Flagged" }));
+    expect(flaggedTip?.getAttribute("data-open")).toBe("false");
+  });
+
+  it("sorts a rubber-stamp table by the clicked column, toggling direction", async () => {
+    const payload = insights({
+      rubberStamp: rubberStamp({
+        reviewers: [
+          { reviewer: user(1, "ada"), ...rate(2, 10, 0.2) },
+          { reviewer: user(2, "bob"), ...rate(8, 8, 1) },
+          { reviewer: user(3, "cyd"), ...rate(5, 9, 5 / 9) },
+        ],
+      }),
+    });
+    renderTables({ insights: async () => payload } as unknown as ApiClient);
+
+    const table = await screen.findByRole("table", { name: "Rubber-stamp rates by reviewer" });
+    const logins = () =>
+      dataRows(table).map((row) => within(row).getAllByRole("cell")[0]?.textContent);
+    const headerCell = (name: string) =>
+      within(table).getByRole("button", { name }).closest("th");
+
+    // Untouched: rows stay in the order the API returned them, nothing marked sorted.
+    expect(logins()).toEqual(["ada", "bob", "cyd"]);
+    expect(headerCell("Flagged")?.getAttribute("aria-sort")).toBe("none");
+
+    // Click Flagged → flagged descending (largest first).
+    await userEvent.click(within(table).getByRole("button", { name: "Flagged" }));
+    expect(logins()).toEqual(["bob", "cyd", "ada"]);
+    expect(headerCell("Flagged")?.getAttribute("aria-sort")).toBe("descending");
+
+    // Click Flagged again → toggles to ascending.
+    await userEvent.click(within(table).getByRole("button", { name: "Flagged" }));
+    expect(logins()).toEqual(["ada", "cyd", "bob"]);
+    expect(headerCell("Flagged")?.getAttribute("aria-sort")).toBe("ascending");
+
+    // Switch to Rate → descending; the previous column resets to unsorted.
+    await userEvent.click(within(table).getByRole("button", { name: "Rate" }));
+    expect(logins()).toEqual(["bob", "cyd", "ada"]);
+    expect(headerCell("Rate")?.getAttribute("aria-sort")).toBe("descending");
+    expect(headerCell("Flagged")?.getAttribute("aria-sort")).toBe("none");
+
+    // Text column leads A–Z.
+    await userEvent.click(within(table).getByRole("button", { name: "Who" }));
+    expect(logins()).toEqual(["ada", "bob", "cyd"]);
+    expect(headerCell("Who")?.getAttribute("aria-sort")).toBe("ascending");
   });
 
   it("shows the API message when insights fail", async () => {

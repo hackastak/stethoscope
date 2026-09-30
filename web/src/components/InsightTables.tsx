@@ -214,43 +214,98 @@ function Leaderboard({
   );
 }
 
-// What each rubber-stamp column counts, mirroring the backend detectRubberStamps logic. Shown as a
-// hover/focus tooltip and read out by screen readers (see ColumnHeader). Thresholds themselves are
-// stated in the visible line above the tables ("Fast approval under Ns. Minimum PR size N lines.").
-const RATE_COLUMNS: readonly { label: string; description?: string }[] = [
-  { label: "Who" },
+type RateRow = {
+  key: string;
+  label: string;
+  subject: string;
+  flagged: number;
+  eligible: number;
+  rate: number | null;
+};
+
+type SortKey = "who" | "flagged" | "eligible" | "rate";
+type SortDirection = "asc" | "desc";
+type SortState = { key: SortKey; direction: SortDirection };
+
+// What each rubber-stamp column counts, mirroring the backend detectRubberStamps logic. The
+// description is shown as a hover/focus tooltip and read out by screen readers (see ColumnHeader).
+// Thresholds are stated in the visible line above the tables ("Fast approval under Ns…"). Each
+// column is also click-to-sort; numeric columns lead with the largest value, text with A–Z.
+const RATE_COLUMNS: readonly {
+  key: SortKey;
+  label: string;
+  numeric: boolean;
+  description?: string;
+}[] = [
+  { key: "who", label: "Who", numeric: false },
   {
+    key: "flagged",
     label: "Flagged",
+    numeric: true,
     description:
       "Eligible approvals that look like rubber-stamps: faster than the fast-approval threshold, with no review comment from that reviewer, on a pull request larger than the minimum size. All three are required.",
   },
   {
+    key: "eligible",
     label: "Eligible",
+    numeric: true,
     description:
       "Approvals counted as the denominator: APPROVED reviews of someone else's pull request with a valid (non-negative) time to approval. Pull request size does not affect eligibility.",
   },
   {
+    key: "rate",
     label: "Rate",
+    numeric: true,
     description: "Flagged divided by Eligible. Shown as null when there are no eligible approvals.",
   },
 ];
 
-/** A column header whose label carries a description. The trigger is a focusable button so the
- * tooltip opens on hover AND keyboard focus (Escape dismisses it), following the ARIA tooltip
- * pattern. The tooltip is position:fixed so it escapes the table's `overflow: hidden` clip, and
- * stays in the DOM referenced by aria-describedby so assistive tech reads it either way. */
-function ColumnHeader({ label, description }: { label: string; description?: string }) {
+/** Sort a copy of the rows by one column. Array.sort is stable, so ties keep the order the API
+ * returned (eligible descending). A null rate always sinks to the bottom, either direction. */
+function sortRows(rows: readonly RateRow[], sort: SortState): RateRow[] {
+  const factor = sort.direction === "asc" ? 1 : -1;
+  return [...rows].sort((left, right) => {
+    if (sort.key === "who") {
+      return left.label.localeCompare(right.label) * factor;
+    }
+    if (sort.key === "rate") {
+      if (left.rate === null && right.rate === null) return 0;
+      if (left.rate === null) return 1;
+      if (right.rate === null) return -1;
+      return (left.rate - right.rate) * factor;
+    }
+    return (left[sort.key] - right[sort.key]) * factor;
+  });
+}
+
+/**
+ * A sortable rubber-stamp column header. The label sits in one button that sorts the table by that
+ * column (toggling direction on repeat clicks). When the column has a description, a separate info
+ * icon button carries the tooltip — and it is the ONLY thing that opens it, on hover, keyboard focus
+ * or click (Escape dismisses it), so sorting never triggers the tooltip. The tooltip is
+ * position:fixed to escape the table's `overflow: hidden` clip, and stays in the DOM referenced by
+ * aria-describedby so assistive tech reads it. `aria-sort` on the cell reports the sort state.
+ */
+function ColumnHeader({
+  column,
+  sort,
+  onSort,
+}: {
+  column: (typeof RATE_COLUMNS)[number];
+  sort: SortState | null;
+  onSort: (column: (typeof RATE_COLUMNS)[number]) => void;
+}) {
   const tipId = useId();
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const iconRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
 
-  if (!description) {
-    return <th scope="col">{label}</th>;
-  }
+  const active = sort?.key === column.key;
+  const ariaSort = active ? (sort.direction === "asc" ? "ascending" : "descending") : "none";
+  const hasTip = column.description !== undefined;
 
   function show() {
-    const el = triggerRef.current;
+    const el = iconRef.current;
     if (el) {
       const rect = el.getBoundingClientRect();
       setCoords({ left: rect.left + rect.width / 2, top: rect.bottom });
@@ -259,72 +314,84 @@ function ColumnHeader({ label, description }: { label: string; description?: str
   }
 
   return (
-    <th scope="col">
-      <button
-        ref={triggerRef}
-        type="button"
-        className="th-tip"
-        aria-describedby={tipId}
-        onMouseEnter={show}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={show}
-        onBlur={() => setOpen(false)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") setOpen(false);
-        }}
-      >
-        <span>{label}</span>
-        <svg
-          className="th-tip-icon"
-          aria-hidden="true"
-          focusable="false"
-          viewBox="0 0 16 16"
-          width="13"
-          height="13"
-        >
-          <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          <circle cx="8" cy="4.6" r="0.95" fill="currentColor" />
-          <path
-            d="M8 7v4.6"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button>
-      <span
-        id={tipId}
-        role="tooltip"
-        className="tooltip"
-        data-open={open}
-        style={{ left: coords.left, top: coords.top }}
-      >
-        {description}
+    <th scope="col" aria-sort={ariaSort}>
+      <span className="col-header">
+        <button type="button" className="col-sort" onClick={() => onSort(column)}>
+          <span>{column.label}</span>
+          <span className="col-sort-arrow" aria-hidden="true">
+            {active ? (sort.direction === "asc" ? "▲" : "▼") : ""}
+          </span>
+        </button>
+        {hasTip ? (
+          <button
+            ref={iconRef}
+            type="button"
+            className="col-info"
+            aria-label={`About ${column.label}`}
+            aria-describedby={tipId}
+            onMouseEnter={show}
+            onMouseLeave={() => setOpen(false)}
+            onFocus={show}
+            onBlur={() => setOpen(false)}
+            onClick={() => setOpen((value) => !value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setOpen(false);
+            }}
+          >
+            <svg
+              className="col-info-icon"
+              aria-hidden="true"
+              focusable="false"
+              viewBox="0 0 16 16"
+              width="13"
+              height="13"
+            >
+              <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
+              <circle cx="8" cy="4.6" r="0.95" fill="currentColor" />
+              <path
+                d="M8 7v4.6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        ) : null}
       </span>
+      {hasTip ? (
+        <span
+          id={tipId}
+          role="tooltip"
+          className="tooltip"
+          data-open={open}
+          style={{ left: coords.left, top: coords.top }}
+        >
+          {column.description}
+        </span>
+      ) : null}
     </th>
   );
 }
 
-function RateTable({
-  caption,
-  rows,
-}: {
-  caption: string;
-  rows: readonly {
-    key: string;
-    label: string;
-    subject: string;
-    flagged: number;
-    eligible: number;
-    rate: number | null;
-  }[];
-}) {
+function RateTable({ caption, rows }: { caption: string; rows: readonly RateRow[] }) {
   const [expanded, setExpanded] = useState(false);
+  // Null keeps the order the API returned (eligible descending) until the user picks a column.
+  const [sort, setSort] = useState<SortState | null>(null);
   const bodyId = useId();
 
-  const collapsible = rows.length > COLLAPSED_ROWS;
-  const visibleRows = collapsible && !expanded ? rows.slice(0, COLLAPSED_ROWS) : rows;
+  function toggleSort(column: (typeof RATE_COLUMNS)[number]): void {
+    setSort((current) =>
+      current?.key === column.key
+        ? { key: column.key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : // First click leads with the most useful end: largest for counts/rate, A–Z for names.
+          { key: column.key, direction: column.numeric ? "desc" : "asc" },
+    );
+  }
+
+  const ordered = sort ? sortRows(rows, sort) : rows;
+  const collapsible = ordered.length > COLLAPSED_ROWS;
+  const visibleRows = collapsible && !expanded ? ordered.slice(0, COLLAPSED_ROWS) : ordered;
 
   return (
     <div className="board">
@@ -333,7 +400,7 @@ function RateTable({
         <thead>
           <tr>
             {RATE_COLUMNS.map((column) => (
-              <ColumnHeader key={column.label} label={column.label} description={column.description} />
+              <ColumnHeader key={column.key} column={column} sort={sort} onSort={toggleSort} />
             ))}
           </tr>
         </thead>

@@ -435,12 +435,16 @@ thead th {
   background: rgba(126, 148, 204, 0.06);
 }
 
-/* A column header carrying a tooltip. Reset from the global gradient-pill button rule down to
-   inline text; the info icon + help cursor signal the description. */
-.th-tip {
+/* Header cell layout: the sort button and (optional) info button sit side by side. */
+.col-header {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
+}
+
+/* Reset both header buttons from the global gradient-pill button rule down to inline text. */
+.col-sort,
+.col-info {
   justify-self: auto;
   padding: 0;
   border: 0;
@@ -451,30 +455,60 @@ thead th {
   text-transform: inherit;
   background: none;
   box-shadow: none;
-  cursor: help;
 }
 
-.th-tip:hover:not(:disabled) {
+.col-sort:hover:not(:disabled),
+.col-info:hover:not(:disabled) {
   filter: none;
   transform: none;
   box-shadow: none;
 }
 
-/* The info affordance. Brightens on hover/focus so it's clear it's interactive. */
-.th-tip-icon {
+/* The label button sorts on click. */
+.col-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+}
+
+.col-sort:hover {
+  color: var(--text);
+}
+
+.col-sort:focus-visible {
+  outline: none;
+  color: var(--cyan);
+}
+
+/* Sort direction indicator; only the active column renders a glyph. */
+.col-sort-arrow {
+  flex: none;
+  min-width: 0.6em;
+  font-size: 0.85em;
+  color: var(--cyan);
+}
+
+/* The info button is the only tooltip trigger. Help cursor + brightening icon signal it. */
+.col-info {
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.col-info-icon {
   flex: none;
   color: var(--text-faint);
   transition: color 0.12s ease;
 }
 
-.th-tip:hover .th-tip-icon,
-.th-tip:focus-visible .th-tip-icon {
+.col-info:hover .col-info-icon,
+.col-info:focus-visible .col-info-icon {
   color: var(--cyan);
 }
 
-.th-tip:focus-visible {
+.col-info:focus-visible {
   outline: none;
-  color: var(--cyan);
   box-shadow: none;
 }
 
