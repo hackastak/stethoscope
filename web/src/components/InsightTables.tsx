@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   cycleTimeSubject,
@@ -214,6 +214,98 @@ function Leaderboard({
   );
 }
 
+// What each rubber-stamp column counts, mirroring the backend detectRubberStamps logic. Shown as a
+// hover/focus tooltip and read out by screen readers (see ColumnHeader). Thresholds themselves are
+// stated in the visible line above the tables ("Fast approval under Ns. Minimum PR size N lines.").
+const RATE_COLUMNS: readonly { label: string; description?: string }[] = [
+  { label: "Who" },
+  {
+    label: "Flagged",
+    description:
+      "Eligible approvals that look like rubber-stamps: faster than the fast-approval threshold, with no review comment from that reviewer, on a pull request larger than the minimum size. All three are required.",
+  },
+  {
+    label: "Eligible",
+    description:
+      "Approvals counted as the denominator: APPROVED reviews of someone else's pull request with a valid (non-negative) time to approval. Pull request size does not affect eligibility.",
+  },
+  {
+    label: "Rate",
+    description: "Flagged divided by Eligible. Shown as null when there are no eligible approvals.",
+  },
+];
+
+/** A column header whose label carries a description. The trigger is a focusable button so the
+ * tooltip opens on hover AND keyboard focus (Escape dismisses it), following the ARIA tooltip
+ * pattern. The tooltip is position:fixed so it escapes the table's `overflow: hidden` clip, and
+ * stays in the DOM referenced by aria-describedby so assistive tech reads it either way. */
+function ColumnHeader({ label, description }: { label: string; description?: string }) {
+  const tipId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+
+  if (!description) {
+    return <th scope="col">{label}</th>;
+  }
+
+  function show() {
+    const el = triggerRef.current;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      setCoords({ left: rect.left + rect.width / 2, top: rect.bottom });
+    }
+    setOpen(true);
+  }
+
+  return (
+    <th scope="col">
+      <button
+        ref={triggerRef}
+        type="button"
+        className="th-tip"
+        aria-describedby={tipId}
+        onMouseEnter={show}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={show}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setOpen(false);
+        }}
+      >
+        <span>{label}</span>
+        <svg
+          className="th-tip-icon"
+          aria-hidden="true"
+          focusable="false"
+          viewBox="0 0 16 16"
+          width="13"
+          height="13"
+        >
+          <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <circle cx="8" cy="4.6" r="0.95" fill="currentColor" />
+          <path
+            d="M8 7v4.6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+      <span
+        id={tipId}
+        role="tooltip"
+        className="tooltip"
+        data-open={open}
+        style={{ left: coords.left, top: coords.top }}
+      >
+        {description}
+      </span>
+    </th>
+  );
+}
+
 function RateTable({
   caption,
   rows,
@@ -240,10 +332,9 @@ function RateTable({
         <caption>{caption}</caption>
         <thead>
           <tr>
-            <th scope="col">Who</th>
-            <th scope="col">Flagged</th>
-            <th scope="col">Eligible</th>
-            <th scope="col">Rate</th>
+            {RATE_COLUMNS.map((column) => (
+              <ColumnHeader key={column.label} label={column.label} description={column.description} />
+            ))}
           </tr>
         </thead>
         <tbody id={bodyId}>

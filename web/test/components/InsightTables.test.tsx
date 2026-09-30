@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, type ApiClient, type InsightsResponse } from "../../src/api/client.js";
@@ -286,6 +286,52 @@ describe("InsightTables", () => {
     const table = await screen.findByRole("table", { name: "Rubber-stamp rates by reviewer" });
     expect(dataRows(table)).toHaveLength(5);
     expect(screen.queryByRole("button", { name: "See More" })).toBeNull();
+  });
+
+  it("describes the Flagged, Eligible, and Rate columns with an accessible tooltip", async () => {
+    const payload = insights({
+      rubberStamp: rubberStamp({ reviewers: reviewerRates(1) }),
+    });
+    renderTables({ insights: async () => payload } as unknown as ApiClient);
+
+    const table = await screen.findByRole("table", { name: "Rubber-stamp rates by reviewer" });
+
+    // Each described header is a focusable trigger pointing at its tooltip via aria-describedby.
+    const flagged = within(table).getByRole("button", { name: "Flagged" });
+    const flaggedTipId = flagged.getAttribute("aria-describedby");
+    expect(flaggedTipId).toBeTruthy();
+    const flaggedTip = document.getElementById(flaggedTipId as string);
+    expect(flaggedTip?.getAttribute("role")).toBe("tooltip");
+    expect(flaggedTip?.textContent).toContain("look like rubber-stamps");
+    // A decorative info icon signals the tooltip without polluting the header's accessible name.
+    expect(flagged.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+
+    const eligibleTipId = within(table)
+      .getByRole("button", { name: "Eligible" })
+      .getAttribute("aria-describedby");
+    expect(document.getElementById(eligibleTipId as string)?.textContent).toContain("denominator");
+
+    const rateTipId = within(table)
+      .getByRole("button", { name: "Rate" })
+      .getAttribute("aria-describedby");
+    expect(document.getElementById(rateTipId as string)?.textContent).toContain(
+      "Flagged divided by Eligible",
+    );
+
+    // "Who" is a plain header, not a tooltip trigger.
+    expect(within(table).queryByRole("button", { name: "Who" })).toBeNull();
+
+    // Closed until hovered/focused, then opens, then closes again on keyboard focus + Escape.
+    expect(flaggedTip?.getAttribute("data-open")).toBe("false");
+    await userEvent.hover(flagged);
+    expect(flaggedTip?.getAttribute("data-open")).toBe("true");
+    await userEvent.unhover(flagged);
+    expect(flaggedTip?.getAttribute("data-open")).toBe("false");
+
+    fireEvent.focus(flagged);
+    expect(flaggedTip?.getAttribute("data-open")).toBe("true");
+    fireEvent.keyDown(flagged, { key: "Escape" });
+    expect(flaggedTip?.getAttribute("data-open")).toBe("false");
   });
 
   it("shows the API message when insights fail", async () => {
