@@ -6,7 +6,7 @@ The Fastify API lives in this directory. The React + Vite UI lives in `web/`. Th
 
 ## 60-second quickstart
 
-You need Node 20+ (`node -v`, `.nvmrc` is `20`), npm, a read-only GitHub token (below), and an Anthropic API key. Both keys are required to boot. The API listens on `127.0.0.1` only.
+You need Node 22+ (`node -v`, `.nvmrc` is `22`; `better-sqlite3` requires Node 22), npm, a read-only GitHub token (below), and an Anthropic API key. Both keys are required to boot. The API listens on `127.0.0.1` only.
 
 ```bash
 git clone https://github.com/hackastak/stethoscope.git

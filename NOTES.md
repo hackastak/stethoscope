@@ -4,7 +4,7 @@ Submission notes for Stethoscope. `README.md` is the quickstart, including the t
 
 ## How to run
 
-Node 20 or newer. The API and the page are separate packages, so both installs are required. Both keys are required to boot. Neither is committed.
+Node 22 or newer (`better-sqlite3` requires it). The API and the page are separate packages, so both installs are required. Both keys are required to boot. Neither is committed.
 
 ```bash
 npm install

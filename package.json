@@ -4,7 +4,7 @@
   "description": "Listen to how your team really reviews code — reciprocity, rubber-stamps, and cycle time from any GitHub repo, with an LLM narrative grounded in the numbers.",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
