@@ -1,7 +1,9 @@
+import { mapWithConcurrency } from "../lib/concurrency.js";
 import { httpError } from "../lib/errors.js";
 import { toActorOrGhost, type RawGitHubUser } from "./actor.js";
-import type { GitHubClient } from "./client.js";
+import { DEFAULT_FETCH_CONCURRENCY, type GitHubClient } from "./client.js";
 import type {
+  FetchReviewsOptions,
   FetchReviewsQuery,
   PullRequestReviewsDto,
   ReviewCommentDto,
@@ -101,10 +103,10 @@ async function fetchOne(
 export async function fetchReviews(
   client: GitHubClient,
   query: FetchReviewsQuery,
+  options: FetchReviewsOptions = {},
 ): Promise<PullRequestReviewsDto[]> {
-  const activity: PullRequestReviewsDto[] = [];
-  for (const pullNumber of query.pullNumbers) {
-    activity.push(await fetchOne(client, query.owner, query.repo, pullNumber));
-  }
-  return activity;
+  const concurrency = options.concurrency ?? DEFAULT_FETCH_CONCURRENCY;
+  return mapWithConcurrency(query.pullNumbers, concurrency, (pullNumber) =>
+    fetchOne(client, query.owner, query.repo, pullNumber),
+  );
 }

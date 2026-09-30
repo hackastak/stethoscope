@@ -15,6 +15,7 @@ import { syncRepo } from "../../src/sync/index.js";
 const LIST = "GET /repos/{owner}/{repo}/pulls";
 const DETAIL = "GET /repos/{owner}/{repo}/pulls/{pull_number}";
 const COMMITS = "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits";
+const TIMELINE = "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline";
 const REVIEW_LIST = "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews";
 const COMMENT_LIST = "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments";
 
@@ -122,6 +123,7 @@ function github(data: Scenario): GitHubClient {
     paginate: vi.fn(async (route: string, parameters: Record<string, unknown> = {}) => {
       const number = Number(parameters.pull_number);
       if (route === COMMITS) return data.commits[number] ?? [];
+      if (route === TIMELINE) return []; // pulls phase; no ready-for-review events in these fixtures
       if (data.failOn === "reviews") {
         throw Object.assign(new Error("reviews failed"), { statusCode: 503 });
       }

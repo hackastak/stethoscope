@@ -115,6 +115,10 @@ function fixtureFetch(mode: FixtureMode): typeof fetch {
       if (!body) return jsonResponse(404, { message: "Not Found" });
       return jsonResponse(200, body);
     }
+    // Issue timeline (ready-for-review events). These fixtures have no drafts, so readyAt stays null.
+    if (/^\/repos\/acme\/widgets\/issues\/\d+\/timeline$/.test(url.pathname)) {
+      return jsonResponse(200, []);
+    }
     return jsonResponse(404, { message: `No fixture for ${url.pathname}` });
   };
 }

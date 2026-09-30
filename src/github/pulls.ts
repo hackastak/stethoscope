@@ -1,6 +1,7 @@
+import { mapWithConcurrency } from "../lib/concurrency.js";
 import { httpError } from "../lib/errors.js";
 import { toActorOrGhost, type RawGitHubUser } from "./actor.js";
-import type { GitHubClient } from "./client.js";
+import { DEFAULT_FETCH_CONCURRENCY, type GitHubClient } from "./client.js";
 import type { FetchPullRequestsOptions, FetchPullRequestsQuery, PullRequestDto } from "./types.js";
 
 const DEFAULT_PER_PAGE = 100;
@@ -8,6 +9,7 @@ const DEFAULT_MAX_PAGES = 100;
 const LIST_ROUTE = "GET /repos/{owner}/{repo}/pulls";
 const DETAIL_ROUTE = "GET /repos/{owner}/{repo}/pulls/{pull_number}";
 const COMMITS_ROUTE = "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits";
+const TIMELINE_ROUTE = "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline";
 
 type ListedPull = {
   number: number;
@@ -35,6 +37,12 @@ type RawCommit = {
     author?: { date?: string | null } | null;
     committer?: { date?: string | null } | null;
   };
+};
+
+/** Issue-timeline entry. Only `ready_for_review` events matter here. */
+type RawTimelineEvent = {
+  event?: string | null;
+  created_at?: string | null;
 };
 
 function epochSeconds(iso: string, label: string): number {
@@ -83,29 +91,42 @@ function lastCommitAt(commits: RawCommit[], pullNumber: number): number {
   return Math.max(...stamps);
 }
 
+/**
+ * Earliest `ready_for_review` event, in epoch seconds, or null when the PR was never a draft.
+ * A never-drafted PR was ready at creation, so null lets the consumer fall back to `created_at`.
+ * The pull payload carries no such stamp and its `draft` flag is only the current state, so the
+ * issue timeline is the one source (Q5).
+ */
+function readyForReviewAt(events: readonly RawTimelineEvent[]): number | null {
+  let at: number | null = null;
+  for (const event of events) {
+    if (event.event !== "ready_for_review" || !event.created_at) continue;
+    const seconds = epochSeconds(event.created_at, "ready_for_review created_at");
+    if (at === null || seconds < at) at = seconds;
+  }
+  return at;
+}
+
 async function enrich(
   client: GitHubClient,
   owner: string,
   repo: string,
   pullNumber: number,
 ): Promise<PullRequestDto> {
-  const detail = await client.request<DetailedPull>(DETAIL_ROUTE, {
-    owner,
-    repo,
-    pull_number: pullNumber,
-  });
-  const commits = await client.paginate<RawCommit>(COMMITS_ROUTE, {
-    owner,
-    repo,
-    pull_number: pullNumber,
-  });
+  // The three reads are independent, so fetch them together; the enclosing pool bounds how many
+  // pull requests run this at once.
+  const [detail, commits, timeline] = await Promise.all([
+    client.request<DetailedPull>(DETAIL_ROUTE, { owner, repo, pull_number: pullNumber }),
+    client.paginate<RawCommit>(COMMITS_ROUTE, { owner, repo, pull_number: pullNumber }),
+    client.paginate<RawTimelineEvent>(TIMELINE_ROUTE, { owner, repo, issue_number: pullNumber }),
+  ]);
   return {
     githubId: detail.id,
     number: detail.number,
     author: toActorOrGhost(detail.user),
     state: pullState(detail.state, pullNumber),
     createdAt: epochSeconds(detail.created_at, "created_at"),
-    readyAt: null,
+    readyAt: readyForReviewAt(timeline),
     mergedAt: optionalEpoch(detail.merged_at, "merged_at"),
     closedAt: optionalEpoch(detail.closed_at, "closed_at"),
     additions: requireCount(detail.additions, "additions", pullNumber),
@@ -204,9 +225,8 @@ export async function fetchPullRequests(
     numbers,
   );
 
-  const enriched: PullRequestDto[] = [];
-  for (const number of numbers) {
-    enriched.push(await enrich(client, query.owner, query.repo, number));
-  }
-  return enriched;
+  const concurrency = options.concurrency ?? DEFAULT_FETCH_CONCURRENCY;
+  return mapWithConcurrency([...numbers], concurrency, (number) =>
+    enrich(client, query.owner, query.repo, number),
+  );
 }

@@ -10,6 +10,7 @@ import { syncResponseSchema } from "../../src/schemas/sync.js";
 const LIST = "GET /repos/{owner}/{repo}/pulls";
 const DETAIL = "GET /repos/{owner}/{repo}/pulls/{pull_number}";
 const COMMITS = "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits";
+const TIMELINE = "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline";
 const REVIEW_LIST = "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews";
 const COMMENT_LIST = "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments";
 
@@ -67,6 +68,7 @@ function github(mode: "ok" | "missing"): GitHubClient {
       if (route === COMMITS) {
         return [{ commit: { committer: { date: "2023-11-18T12:00:00Z" } } }];
       }
+      if (route === TIMELINE) return [];
       if (route === REVIEW_LIST) {
         return [
           {

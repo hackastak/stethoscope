@@ -31,6 +31,8 @@ export type FetchPullRequestsQuery = {
 export type FetchPullRequestsOptions = {
   perPage?: number;
   maxPages?: number;
+  /** Pull requests enriched in parallel. Defaults to DEFAULT_FETCH_CONCURRENCY. */
+  concurrency?: number;
 };
 
 /** Submitted review states. PENDING reviews are omitted by the fetcher. */
@@ -66,4 +68,9 @@ export type FetchReviewsQuery = {
   owner: string;
   repo: string;
   pullNumbers: readonly number[];
+};
+
+export type FetchReviewsOptions = {
+  /** Pull requests whose review activity is fetched in parallel. Defaults to DEFAULT_FETCH_CONCURRENCY. */
+  concurrency?: number;
 };

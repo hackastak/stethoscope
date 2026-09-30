@@ -56,6 +56,13 @@ export type GitHubClient = {
   paginate: <T>(route: string, parameters?: Record<string, unknown>) => Promise<T[]>;
 };
 
+/**
+ * How many pull requests to enrich in parallel. The client already retries 429s with backoff, so
+ * this only needs to stay well under GitHub's secondary-abuse ceiling; 8 is a safe demo default.
+ * Not an env var — the config list is closed (Q33). Callers may override for tests.
+ */
+export const DEFAULT_FETCH_CONCURRENCY = 8;
+
 type RetryOptions = {
   token: string;
   sleep: (ms: number) => Promise<void>;

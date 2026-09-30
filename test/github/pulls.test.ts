@@ -39,10 +39,7 @@ function client(handlers: Record<string, RouteHandler>): GitHubClient & {
  * Route handler for the pulls list endpoint that serves separate page sets for
  * the `state=closed` and `state=open` passes the fetcher runs.
  */
-function listHandler(pagesByState: {
-  open?: unknown[][];
-  closed?: unknown[][];
-}): RouteHandler {
+function listHandler(pagesByState: { open?: unknown[][]; closed?: unknown[][] }): RouteHandler {
   return (parameters) => {
     const state = parameters.state as "open" | "closed";
     const pages = pagesByState[state] ?? [];
@@ -183,7 +180,9 @@ describe("fetchPullRequests", () => {
     expect(pulls.map((pull) => pull.number)).toEqual([11, 12, 13]);
     expect(
       github.request.mock.calls
-        .filter((call) => call[0] === "GET /repos/{owner}/{repo}/pulls" && call[1]?.state === "closed")
+        .filter(
+          (call) => call[0] === "GET /repos/{owner}/{repo}/pulls" && call[1]?.state === "closed",
+        )
         .map((call) => call[1]?.page),
     ).toEqual([1, 2]);
   });
@@ -265,6 +264,10 @@ describe("fetchPullRequests", () => {
     });
     github.paginate.mockImplementation(
       async (route: string, parameters: Record<string, unknown>) => {
+        if (route === "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline") {
+          expect(parameters).toMatchObject({ owner: "octocat", repo: "hello", issue_number: 42 });
+          return []; // never a draft, so readyAt stays null
+        }
         expect(route).toBe("GET /repos/{owner}/{repo}/pulls/{pull_number}/commits");
         expect(parameters).toMatchObject({ owner: "octocat", repo: "hello", pull_number: 42 });
         return [
@@ -310,6 +313,34 @@ describe("fetchPullRequests", () => {
     expect(
       github.request.mock.calls.filter((call) => String(call[0]).includes("{pull_number}")),
     ).toHaveLength(1);
+  });
+
+  it("sets readyAt from the earliest ready_for_review timeline event", async () => {
+    const github = client({
+      "GET /repos/{owner}/{repo}/pulls": listHandler({
+        closed: [[summary({ id: 5, number: 5 })]],
+      }),
+    });
+    github.paginate.mockImplementation(async (route: string) => {
+      if (route === "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline") {
+        // Opened as a draft, marked ready twice; the earliest ready wins, later draft time is excluded.
+        return [
+          { event: "review_requested", created_at: "2023-11-15T00:00:00Z" },
+          { event: "ready_for_review", created_at: "2023-11-17T00:00:00Z" },
+          { event: "ready_for_review", created_at: "2023-11-16T00:00:00Z" },
+        ];
+      }
+      return [{ commit: { committer: { date: "2023-11-18T00:00:00Z" } } }];
+    });
+
+    const pulls = await fetchPullRequests(github, {
+      owner: "octocat",
+      repo: "hello",
+      since: SINCE,
+      until: UNTIL,
+    });
+
+    expect(pulls[0]?.readyAt).toBe(Date.parse("2023-11-16T00:00:00Z") / 1000);
   });
 
   it("rejects a window whose since is after until", async () => {
