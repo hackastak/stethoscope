@@ -1,7 +1,7 @@
 import { RequestError } from "@octokit/request-error";
 import { Octokit } from "@octokit/rest";
 import type { Config } from "../config.js";
-import { redactSecrets } from "../lib/errors.js";
+import { hasStatusCode, httpError, redactSecrets } from "../lib/errors.js";
 
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_MAX_BACKOFF_MS = 60_000;
@@ -148,14 +148,6 @@ function delayFor(error: RequestError, attempt: number, options: RetryOptions): 
   return exponentialBackoff(attempt, options.maxBackoffMs);
 }
 
-function githubError(statusCode: number, message: string): Error & { statusCode: number } {
-  return Object.assign(new Error(message), { statusCode });
-}
-
-function isNormalized(error: unknown): error is Error & { statusCode: number } {
-  return error instanceof Error && "statusCode" in error && typeof error.statusCode === "number";
-}
-
 function notFoundMessage(owner: unknown, repo: unknown, token: string): string {
   if (
     typeof owner === "string" &&
@@ -178,19 +170,19 @@ function normalizeError(
   request: RequestOptions,
   token: string,
 ): Error & { statusCode: number } {
-  if (isNormalized(error)) return error;
+  if (hasStatusCode(error)) return error;
 
   if (error instanceof RequestError) {
     if (error.status === 404) {
-      return githubError(404, notFoundMessage(request.owner, request.repo, token));
+      return httpError(404, notFoundMessage(request.owner, request.repo, token));
     }
     const status = error.status >= 400 && error.status < 600 ? error.status : 500;
     const message = redactSecrets(error.message || "GitHub request failed", [token]);
-    return githubError(status, message);
+    return httpError(status, message);
   }
 
   const message = error instanceof Error ? error.message : "GitHub request failed";
-  return githubError(500, redactSecrets(message, [token]));
+  return httpError(500, redactSecrets(message, [token]));
 }
 
 function retryTarget(request: RequestOptions, token: string): string {
@@ -239,7 +231,7 @@ export function createGitHubClient(
           continue;
         }
         if (isRateLimited(error)) {
-          throw githubError(429, rateLimitMessage(delayFor(error, attempt, retry)));
+          throw httpError(429, rateLimitMessage(delayFor(error, attempt, retry)));
         }
         if (isRetryableNetworkError(error) && attempt < retry.maxRetries) {
           const delay = exponentialBackoff(attempt, retry.maxBackoffMs);
@@ -274,14 +266,14 @@ export function createGitHubClient(
 
       for await (const page of iterator) {
         if (!Array.isArray(page.data)) {
-          throw githubError(500, "GitHub pagination expected an array response");
+          throw httpError(500, "GitHub pagination expected an array response");
         }
         items.push(...(page.data as T[]));
         pages += 1;
         const link = headerValue(page.headers, "link") ?? "";
         if (!link.includes('rel="next"')) return items;
         if (pages >= maxPages) {
-          throw githubError(500, "GitHub pagination exceeded the page cap");
+          throw httpError(500, "GitHub pagination exceeded the page cap");
         }
       }
 

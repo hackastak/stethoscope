@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import type { AppDatabase } from "../db/client.js";
 import type { GitHubClient } from "../github/client.js";
+import { validationError } from "../lib/errors.js";
 import {
   formatSyncIssues,
   syncBodySchema,
@@ -14,10 +15,6 @@ export type SyncRouteOptions = {
   db: AppDatabase;
   github: GitHubClient;
 };
-
-function validationError(message: string): Error & { statusCode: number } {
-  return Object.assign(new Error(message), { statusCode: 400 });
-}
 
 export const syncRoutes: FastifyPluginAsync<SyncRouteOptions> = async (app, options) => {
   app.setValidatorCompiler(({ schema }) => {

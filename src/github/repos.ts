@@ -1,3 +1,4 @@
+import { hasStatusCode, httpError } from "../lib/errors.js";
 import type { RepoSummary, RepoVisibility } from "../schemas/repos.js";
 import type { GitHubClient } from "./client.js";
 
@@ -31,27 +32,11 @@ type RawRepo = {
   owner?: { login?: string } | null;
 };
 
-function githubError(statusCode: number, message: string): Error & { statusCode: number } {
-  return Object.assign(new Error(message), { statusCode });
-}
-
-function statusCode(error: unknown): number | undefined {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "statusCode" in error &&
-    typeof error.statusCode === "number"
-  ) {
-    return error.statusCode;
-  }
-  return undefined;
-}
-
 function pushedAt(iso: string | null | undefined, fullName: string): number | null {
   if (!iso) return null;
   const parsed = Date.parse(iso);
   if (Number.isNaN(parsed)) {
-    throw githubError(500, `GitHub repository ${fullName} has an invalid pushed_at`);
+    throw httpError(500, `GitHub repository ${fullName} has an invalid pushed_at`);
   }
   return Math.floor(parsed / 1000);
 }
@@ -65,16 +50,16 @@ function visibility(raw: RawRepo, fullName: string): RepoVisibility {
     return raw.visibility;
   }
   if (typeof raw.private === "boolean") return raw.private ? "private" : "public";
-  throw githubError(500, `GitHub repository ${fullName} is missing visibility`);
+  throw httpError(500, `GitHub repository ${fullName} is missing visibility`);
 }
 
 function normalize(raw: RawRepo): RepoSummary {
   const owner = raw.owner?.login;
   const name = raw.name;
-  if (!owner) throw githubError(500, "GitHub repository is missing an owner");
-  if (!name) throw githubError(500, "GitHub repository is missing a name");
+  if (!owner) throw httpError(500, "GitHub repository is missing an owner");
+  if (!name) throw httpError(500, "GitHub repository is missing a name");
   if (!raw.default_branch) {
-    throw githubError(500, `GitHub repository ${owner}/${name} is missing a default branch`);
+    throw httpError(500, `GitHub repository ${owner}/${name} is missing a default branch`);
   }
   const fullName = raw.full_name && raw.full_name.length > 0 ? raw.full_name : `${owner}/${name}`;
   return {
@@ -126,7 +111,7 @@ async function listOwnerRepos(client: GitHubClient, owner: string): Promise<Repo
     });
     return publicOnly(repos);
   } catch (error) {
-    if (statusCode(error) !== 404) throw error;
+    if (!hasStatusCode(error) || error.statusCode !== 404) throw error;
   }
 
   try {
@@ -138,8 +123,8 @@ async function listOwnerRepos(client: GitHubClient, owner: string): Promise<Repo
     });
     return publicOnly(repos);
   } catch (error) {
-    if (statusCode(error) !== 404) throw error;
-    throw githubError(404, `Owner ${owner} not found`);
+    if (!hasStatusCode(error) || error.statusCode !== 404) throw error;
+    throw httpError(404, `Owner ${owner} not found`);
   }
 }
 

@@ -1,3 +1,4 @@
+import { httpError } from "../lib/errors.js";
 import { toActorOrGhost, type RawGitHubUser } from "./actor.js";
 import type { GitHubClient } from "./client.js";
 import type { FetchPullRequestsOptions, FetchPullRequestsQuery, PullRequestDto } from "./types.js";
@@ -36,14 +37,10 @@ type RawCommit = {
   };
 };
 
-function githubError(statusCode: number, message: string): Error & { statusCode: number } {
-  return Object.assign(new Error(message), { statusCode });
-}
-
 function epochSeconds(iso: string, label: string): number {
   const parsed = Date.parse(iso);
   if (Number.isNaN(parsed)) {
-    throw githubError(500, `GitHub returned an invalid ${label}`);
+    throw httpError(500, `GitHub returned an invalid ${label}`);
   }
   return Math.floor(parsed / 1000);
 }
@@ -63,12 +60,12 @@ function overlaps(pull: ListedPull, since: number, until: number): boolean {
 
 function pullState(state: string, pullNumber: number): PullRequestDto["state"] {
   if (state === "open" || state === "closed") return state;
-  throw githubError(500, `Pull request #${pullNumber} has an unexpected state`);
+  throw httpError(500, `Pull request #${pullNumber} has an unexpected state`);
 }
 
 function requireCount(value: number, label: string, pullNumber: number): number {
   if (!Number.isInteger(value) || value < 0) {
-    throw githubError(500, `Pull request #${pullNumber} is missing ${label}`);
+    throw httpError(500, `Pull request #${pullNumber} is missing ${label}`);
   }
   return value;
 }
@@ -81,7 +78,7 @@ function lastCommitAt(commits: RawCommit[], pullNumber: number): number {
     return iso ? [epochSeconds(iso, "commit date")] : [];
   });
   if (stamps.length === 0) {
-    throw githubError(500, `Pull request #${pullNumber} is missing a last commit timestamp`);
+    throw httpError(500, `Pull request #${pullNumber} is missing a last commit timestamp`);
   }
   return Math.max(...stamps);
 }
@@ -163,7 +160,7 @@ async function collectWindowNumbers(
     }
     if (done || batch.length < perPage) break;
     if (page === maxPages) {
-      throw githubError(500, "GitHub pagination exceeded the page cap");
+      throw httpError(500, "GitHub pagination exceeded the page cap");
     }
   }
 }
@@ -174,7 +171,7 @@ export async function fetchPullRequests(
   options: FetchPullRequestsOptions = {},
 ): Promise<PullRequestDto[]> {
   if (!Number.isFinite(query.since) || !Number.isFinite(query.until) || query.since > query.until) {
-    throw githubError(400, "since must be less than or equal to until");
+    throw httpError(400, "since must be less than or equal to until");
   }
 
   const perPage = options.perPage ?? DEFAULT_PER_PAGE;

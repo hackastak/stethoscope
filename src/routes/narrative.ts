@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { Config } from "../config.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Fact } from "../facts/types.js";
-import { problem } from "../lib/errors.js";
+import { httpError, problem, validationError } from "../lib/errors.js";
 import { createMemoryNarrativeCache, type NarrativeCache } from "../llm/cache.js";
 import { synthesize } from "../llm/narrative.js";
 import type { LLMProvider } from "../llm/provider.js";
@@ -14,7 +14,7 @@ import {
   type NarrativeBody,
   type NarrativeResponse,
 } from "../schemas/narrative.js";
-import { httpError, loadInsights, type InsightsConfig } from "./insights.js";
+import { loadInsights, type InsightsConfig } from "./insights.js";
 
 /** Local demo budget. Not an env var — the config list is closed. Decisions Q33. */
 export const NARRATIVE_RATE_LIMIT_MAX = 10;
@@ -92,10 +92,6 @@ function resolveEvidence(
     const value = values.get(id);
     return { id, value: value ?? null };
   });
-}
-
-function validationError(message: string): Error & { statusCode: number } {
-  return httpError(400, message);
 }
 
 /**

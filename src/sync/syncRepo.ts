@@ -7,6 +7,7 @@ import {
   upsertReviewComment,
   upsertUser,
 } from "../db/upserts.js";
+import { httpError } from "../lib/errors.js";
 import type { GitHubClient } from "../github/client.js";
 import { fetchPullRequests } from "../github/pulls.js";
 import { fetchReviews } from "../github/reviews.js";
@@ -37,10 +38,6 @@ function epochNow(): number {
   return Math.floor(Date.now() / 1000);
 }
 
-function syncError(statusCode: number, message: string): Error & { statusCode: number } {
-  return Object.assign(new Error(message), { statusCode });
-}
-
 function actorsIn(pulls: readonly PullRequestDto[], activity: readonly PullRequestReviewsDto[]) {
   const byId = new Map<number, GitHubActor>();
   const add = (actor: GitHubActor) => {
@@ -57,7 +54,7 @@ function actorsIn(pulls: readonly PullRequestDto[], activity: readonly PullReque
 function userId(ids: ReadonlyMap<number, number>, actor: GitHubActor, label: string): number {
   const id = ids.get(actor.githubId);
   if (id === undefined) {
-    throw syncError(500, `${label} is missing user ${actor.login}`);
+    throw httpError(500, `${label} is missing user ${actor.login}`);
   }
   return id;
 }
@@ -102,7 +99,7 @@ export async function syncRepo(
     for (const item of activity) {
       const prId = prIds.get(item.pullNumber);
       if (prId === undefined) {
-        throw syncError(500, `Review activity for #${item.pullNumber} has no synced pull request`);
+        throw httpError(500, `Review activity for #${item.pullNumber} has no synced pull request`);
       }
       for (const review of item.reviews) {
         const reviewerId = userId(ids, review.reviewer, `Review ${review.githubId}`);

@@ -2,15 +2,12 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import type { GitHubClient } from "../github/client.js";
 import { listRepos } from "../github/repos.js";
+import { validationError } from "../lib/errors.js";
 import { formatReposIssues, reposQuerySchema, type ReposQuery } from "../schemas/repos.js";
 
 export type ReposRouteOptions = {
   github: GitHubClient;
 };
-
-function validationError(message: string): Error & { statusCode: number } {
-  return Object.assign(new Error(message), { statusCode: 400 });
-}
 
 export const reposRoutes: FastifyPluginAsync<ReposRouteOptions> = async (app, options) => {
   app.setValidatorCompiler(({ schema }) => {

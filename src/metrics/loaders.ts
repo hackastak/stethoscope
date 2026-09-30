@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, isNotNull, isNull, lte, or, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 import type { AppDatabase } from "../db/client.js";
+import { httpError } from "../lib/errors.js";
 import {
   pullRequests,
   repos,
@@ -80,15 +81,11 @@ export type LoadMetricWindowOptions = {
 const author = alias(users, "author");
 const reviewer = alias(users, "reviewer");
 
-function loaderError(statusCode: number, message: string): Error & { statusCode: number } {
-  return Object.assign(new Error(message), { statusCode });
-}
-
 function assertWindow(since: number, until: number): void {
   if (!Number.isInteger(since) || since < 0 || !Number.isInteger(until) || until < 0) {
-    throw loaderError(400, "since and until must be unix epoch seconds");
+    throw httpError(400, "since and until must be unix epoch seconds");
   }
-  if (until < since) throw loaderError(400, "until must be on or after since");
+  if (until < since) throw httpError(400, "until must be on or after since");
 }
 
 /**
@@ -108,7 +105,7 @@ function prOverlaps(since: number, until: number): SQL {
       and(isNull(pullRequests.closedAt), isNull(pullRequests.mergedAt)),
     ),
   );
-  if (!filter) throw loaderError(500, "Failed to build the metric window filter");
+  if (!filter) throw httpError(500, "Failed to build the metric window filter");
   return filter;
 }
 
@@ -145,7 +142,7 @@ export function loadMetricWindow(
     .from(repos)
     .where(and(eq(repos.owner, resolved.owner), eq(repos.name, resolved.repo)))
     .get();
-  if (!repo) throw loaderError(404, `Repository ${resolved.owner}/${resolved.repo} not found`);
+  if (!repo) throw httpError(404, `Repository ${resolved.owner}/${resolved.repo} not found`);
 
   const overlap = prOverlaps(resolved.since, resolved.until);
   const pullRows = db

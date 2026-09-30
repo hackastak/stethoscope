@@ -4,6 +4,7 @@ import type { Config } from "../config.js";
 import type { AppDatabase } from "../db/client.js";
 import { buildReciprocityGraph } from "../metrics/reciprocity.js";
 import { loadMetricWindow } from "../metrics/loaders.js";
+import { validationError } from "../lib/errors.js";
 import {
   formatInsightsIssues,
   insightsGraphResponseSchema,
@@ -11,7 +12,7 @@ import {
   type InsightsGraphResponse,
   type InsightsQuery,
 } from "../schemas/insights.js";
-import { assertSynced, httpError } from "./insights.js";
+import { assertSynced } from "./insights.js";
 
 export type InsightsGraphConfig = Pick<Config, "minReciprocityInteractions">;
 
@@ -21,10 +22,6 @@ export type InsightsGraphRouteOptions = {
   /** Milliseconds since the epoch. Defaults to Date.now. Used only to resolve omitted bounds. */
   now?: () => number;
 };
-
-function validationError(message: string): Error & { statusCode: number } {
-  return httpError(400, message);
-}
 
 /**
  * Reciprocity network for the frontend graph.

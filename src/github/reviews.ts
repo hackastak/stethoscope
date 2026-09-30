@@ -1,3 +1,4 @@
+import { httpError } from "../lib/errors.js";
 import { toActorOrGhost, type RawGitHubUser } from "./actor.js";
 import type { GitHubClient } from "./client.js";
 import type {
@@ -28,14 +29,10 @@ type RawComment = {
   user?: RawGitHubUser | null;
 };
 
-function githubError(statusCode: number, message: string): Error & { statusCode: number } {
-  return Object.assign(new Error(message), { statusCode });
-}
-
 function epochSeconds(iso: string, label: string): number {
   const parsed = Date.parse(iso);
   if (Number.isNaN(parsed)) {
-    throw githubError(500, `GitHub returned an invalid ${label}`);
+    throw httpError(500, `GitHub returned an invalid ${label}`);
   }
   return Math.floor(parsed / 1000);
 }
@@ -46,13 +43,13 @@ function isReviewState(state: string): state is ReviewState {
 
 function reviewDto(raw: RawReview, pullNumber: number, comments: RawComment[]): ReviewDto {
   if (typeof raw.id !== "number") {
-    throw githubError(500, `Pull request #${pullNumber} has a review without an id`);
+    throw httpError(500, `Pull request #${pullNumber} has a review without an id`);
   }
   if (!raw.state || !isReviewState(raw.state)) {
-    throw githubError(500, `Review ${raw.id} has an unexpected state`);
+    throw httpError(500, `Review ${raw.id} has an unexpected state`);
   }
   if (!raw.submitted_at) {
-    throw githubError(500, `Review ${raw.id} is missing submitted_at`);
+    throw httpError(500, `Review ${raw.id} is missing submitted_at`);
   }
   return {
     githubId: raw.id,
@@ -67,10 +64,10 @@ function reviewDto(raw: RawReview, pullNumber: number, comments: RawComment[]): 
 
 function commentDto(raw: RawComment, pullNumber: number): ReviewCommentDto {
   if (typeof raw.id !== "number") {
-    throw githubError(500, `Pull request #${pullNumber} has a review comment without an id`);
+    throw httpError(500, `Pull request #${pullNumber} has a review comment without an id`);
   }
   if (!raw.created_at) {
-    throw githubError(500, `Review comment ${raw.id} is missing created_at`);
+    throw httpError(500, `Review comment ${raw.id} is missing created_at`);
   }
   return {
     githubId: raw.id,

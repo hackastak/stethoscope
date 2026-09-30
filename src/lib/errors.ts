@@ -23,6 +23,29 @@ export function problem(status: number, message: string): Problem {
   };
 }
 
+/**
+ * The app's errors are plain Errors carrying an HTTP `statusCode`; the global handler runs them
+ * through `errorToProblem`. This is the one factory — do not reinvent the `Object.assign` locally.
+ */
+export function httpError(statusCode: number, message: string): Error & { statusCode: number } {
+  return Object.assign(new Error(message), { statusCode });
+}
+
+/** The common case: a request that failed schema validation. */
+export function validationError(message: string): Error & { statusCode: number } {
+  return httpError(400, message);
+}
+
+/** True when an unknown error already carries a numeric `statusCode` (ours, or an LLM error class). */
+export function hasStatusCode(error: unknown): error is Error & { statusCode: number } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "statusCode" in error &&
+    typeof error.statusCode === "number"
+  );
+}
+
 export function redactSecrets(value: string, secrets: string[]): string {
   return secrets.reduce(
     (out, secret) => (secret.length > 0 ? out.split(secret).join("[REDACTED]") : out),
@@ -44,13 +67,7 @@ export function errorToProblem(
   error: unknown,
   { secrets }: { production: boolean; secrets: string[] },
 ): Problem {
-  const status =
-    typeof error === "object" &&
-    error !== null &&
-    "statusCode" in error &&
-    typeof error.statusCode === "number"
-      ? error.statusCode
-      : 500;
+  const status = hasStatusCode(error) ? error.statusCode : 500;
 
   const rawMessage =
     error instanceof Error && error.message.length > 0 ? error.message : "Internal Server Error";

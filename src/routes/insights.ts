@@ -5,6 +5,7 @@ import type { Config } from "../config.js";
 import type { AppDatabase } from "../db/client.js";
 import { syncRuns } from "../db/schema.js";
 import { buildFacts } from "../facts/build.js";
+import { httpError, validationError } from "../lib/errors.js";
 import { computeCycleTime } from "../metrics/cycletime.js";
 import { buildLeaderboards } from "../metrics/leaderboards.js";
 import { computeLoadBalance } from "../metrics/loadbalance.js";
@@ -30,14 +31,6 @@ export type InsightsRouteOptions = {
   /** Milliseconds since the epoch. Defaults to Date.now. Used only to resolve omitted bounds. */
   now?: () => number;
 };
-
-export function httpError(statusCode: number, message: string): Error & { statusCode: number } {
-  return Object.assign(new Error(message), { statusCode });
-}
-
-function validationError(message: string): Error & { statusCode: number } {
-  return httpError(400, message);
-}
 
 /**
  * A window is synced only when a succeeded run fully covers it.
