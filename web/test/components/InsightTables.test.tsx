@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, type ApiClient, type InsightsResponse } from "../../src/api/client.js";
 import { InsightTables } from "../../src/components/InsightTables.js";
@@ -21,6 +22,38 @@ function rate(flagged: number, eligible: number, rate: number | null) {
 
 function stats(count: number, median: number | null, p75: number | null) {
   return { count, median, p75 };
+}
+
+/** A leaderboard of `size` rows, counts descending so login `userN` has a predictable count. */
+function board(size: number) {
+  return Array.from({ length: size }, (_, index) => ({
+    githubId: index + 1,
+    login: `user${index + 1}`,
+    count: size - index,
+  }));
+}
+
+function dataRows(table: HTMLElement) {
+  return within(table).getAllByRole("row").slice(1);
+}
+
+/** `size` rubber-stamp-by-reviewer rows with distinct logins and rates. */
+function reviewerRates(size: number) {
+  return Array.from({ length: size }, (_, index) => ({
+    reviewer: user(index + 1, `rev${index + 1}`),
+    ...rate(index, index + 1, index / (index + 1)),
+  }));
+}
+
+function rubberStamp(overrides: Partial<InsightsResponse["rubberStamp"]> = {}) {
+  return {
+    fastApprovalSeconds: 300,
+    minPrSize: 100,
+    approvals: [],
+    reviewers: [],
+    pairs: [],
+    ...overrides,
+  };
 }
 
 function insights(overrides: Partial<InsightsResponse> = {}): InsightsResponse {
@@ -154,6 +187,105 @@ describe("InsightTables", () => {
     const reviewers = await screen.findByRole("table", { name: "Top reviewers" });
     expect(within(reviewers).getByText("None in this window.")).toBeTruthy();
     expect(document.getElementById("fact:leaderboard:authors:ada")?.textContent).toBe("1");
+  });
+
+  it("collapses a long board to its top five and offers a See More toggle", async () => {
+    const payload = insights({
+      leaderboards: {
+        reviewers: board(8),
+        authors: [{ githubId: 1, login: "ada", count: 4 }],
+        closers: [],
+      },
+    });
+    renderTables({ insights: async () => payload } as unknown as ApiClient);
+
+    const reviewers = await screen.findByRole("table", { name: "Top reviewers" });
+    expect(dataRows(reviewers)).toHaveLength(5);
+    // The sixth-and-beyond rows are not rendered while collapsed.
+    expect(document.getElementById("fact:leaderboard:reviewers:user6")).toBeNull();
+    // Only the board over the cap gets a toggle; the short board does not.
+    expect(screen.getAllByRole("button", { name: "See More" })).toHaveLength(1);
+  });
+
+  it("does not add a toggle when a board is at or under five rows", async () => {
+    const payload = insights({
+      leaderboards: { reviewers: board(5), authors: [], closers: [] },
+    });
+    renderTables({ insights: async () => payload } as unknown as ApiClient);
+
+    const reviewers = await screen.findByRole("table", { name: "Top reviewers" });
+    expect(dataRows(reviewers)).toHaveLength(5);
+    expect(screen.queryByRole("button", { name: "See More" })).toBeNull();
+  });
+
+  it("expands to every row on See More and collapses again on See Less", async () => {
+    const payload = insights({
+      leaderboards: { reviewers: board(8), authors: [], closers: [] },
+    });
+    renderTables({ insights: async () => payload } as unknown as ApiClient);
+
+    const reviewers = await screen.findByRole("table", { name: "Top reviewers" });
+    await userEvent.click(screen.getByRole("button", { name: "See More" }));
+
+    expect(dataRows(reviewers)).toHaveLength(8);
+    expect(document.getElementById("fact:leaderboard:reviewers:user8")?.textContent).toBe("1");
+
+    const collapse = screen.getByRole("button", { name: "See Less" });
+    expect(collapse.getAttribute("aria-expanded")).toBe("true");
+    await userEvent.click(collapse);
+
+    expect(dataRows(reviewers)).toHaveLength(5);
+    expect(screen.getByRole("button", { name: "See More" }).getAttribute("aria-expanded")).toBe(
+      "false",
+    );
+  });
+
+  it("tracks expand state independently per board", async () => {
+    const payload = insights({
+      leaderboards: { reviewers: board(8), authors: board(7), closers: [] },
+    });
+    renderTables({ insights: async () => payload } as unknown as ApiClient);
+
+    const reviewers = await screen.findByRole("table", { name: "Top reviewers" });
+    const authors = screen.getByRole("table", { name: "Top authors" });
+
+    // Expanding reviewers must not expand authors.
+    await userEvent.click(within(reviewers.closest(".board")!).getByRole("button"));
+
+    expect(dataRows(reviewers)).toHaveLength(8);
+    expect(dataRows(authors)).toHaveLength(5);
+    expect(within(authors.closest(".board")!).getByRole("button").textContent).toBe("See More");
+  });
+
+  it("collapses a long rubber-stamp table and expands it on See More", async () => {
+    const payload = insights({
+      rubberStamp: rubberStamp({ reviewers: reviewerRates(8) }),
+    });
+    renderTables({ insights: async () => payload } as unknown as ApiClient);
+
+    const table = await screen.findByRole("table", { name: "Rubber-stamp rates by reviewer" });
+    expect(dataRows(table)).toHaveLength(5);
+    expect(document.getElementById("fact:rubberstamp:rev8")).toBeNull();
+    // Only the board over the cap has a toggle (the empty pair table has none).
+    expect(screen.getAllByRole("button", { name: "See More" })).toHaveLength(1);
+
+    await userEvent.click(screen.getByRole("button", { name: "See More" }));
+    expect(dataRows(table)).toHaveLength(8);
+    expect(document.getElementById("fact:rubberstamp:rev8")?.textContent).toBe(String(7 / 8));
+
+    await userEvent.click(screen.getByRole("button", { name: "See Less" }));
+    expect(dataRows(table)).toHaveLength(5);
+  });
+
+  it("leaves a short rubber-stamp table untoggled", async () => {
+    const payload = insights({
+      rubberStamp: rubberStamp({ reviewers: reviewerRates(5) }),
+    });
+    renderTables({ insights: async () => payload } as unknown as ApiClient);
+
+    const table = await screen.findByRole("table", { name: "Rubber-stamp rates by reviewer" });
+    expect(dataRows(table)).toHaveLength(5);
+    expect(screen.queryByRole("button", { name: "See More" })).toBeNull();
   });
 
   it("shows the API message when insights fail", async () => {

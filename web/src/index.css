@@ -368,6 +368,34 @@ fieldset:disabled {
   gap: 1.1rem;
 }
 
+/* One leaderboard: its table plus the See More / See Less toggle, kept together as a single
+   grid item within .tables. */
+.board {
+  display: grid;
+  gap: 0.5rem;
+}
+
+/* A quiet, outlined toggle — the global gradient button pill is too heavy under every table. */
+.board .see-more {
+  justify-self: end;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--cyan);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.board .see-more:hover:not(:disabled) {
+  filter: none;
+  transform: none;
+  border-color: var(--cyan);
+  background: rgba(47, 198, 214, 0.06);
+  box-shadow: none;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -386,7 +414,8 @@ caption {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--cyan);
-  padding: 0 0 0.5rem;
+  /* Small left pad so the uppercase first letter (with letter-spacing) isn't clipped. */
+  padding: 0 0 0.5rem 0.15rem;
 }
 
 th,

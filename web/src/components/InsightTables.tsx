@@ -1,3 +1,4 @@
+import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   cycleTimeSubject,
@@ -51,6 +52,10 @@ const INTERVALS: readonly {
     stats: (cycle) => cycle.firstApprovalToMerge,
   },
 ];
+
+/** Rows shown per leaderboard before "See More" is used. Repos with many contributors would
+ * otherwise render an unbounded table. */
+const COLLAPSED_ROWS = 5;
 
 function exact(value: number | null): string {
   return value === null ? "null" : String(value);
@@ -161,32 +166,51 @@ function Leaderboard({
   factBoard: string;
   rows: readonly LeaderboardRow[];
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const bodyId = useId();
+
+  const collapsible = rows.length > COLLAPSED_ROWS;
+  const visibleRows = collapsible && !expanded ? rows.slice(0, COLLAPSED_ROWS) : rows;
+
   return (
-    <table>
-      <caption>{caption}</caption>
-      <thead>
-        <tr>
-          <th scope="col">Login</th>
-          <th scope="col">{countHeader}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.length === 0 ? (
+    <div className="board">
+      <table>
+        <caption>{caption}</caption>
+        <thead>
           <tr>
-            <td colSpan={2}>None in this window.</td>
+            <th scope="col">Login</th>
+            <th scope="col">{countHeader}</th>
           </tr>
-        ) : (
-          rows.map((row) => (
-            <tr key={row.githubId}>
-              <td>{row.login}</td>
-              <td id={factId("leaderboard", leaderboardSubject(factBoard, row.login))}>
-                {exact(row.count)}
-              </td>
+        </thead>
+        <tbody id={bodyId}>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={2}>None in this window.</td>
             </tr>
-          ))
-        )}
-      </tbody>
-    </table>
+          ) : (
+            visibleRows.map((row) => (
+              <tr key={row.githubId}>
+                <td>{row.login}</td>
+                <td id={factId("leaderboard", leaderboardSubject(factBoard, row.login))}>
+                  {exact(row.count)}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+      {collapsible ? (
+        <button
+          type="button"
+          className="see-more"
+          aria-expanded={expanded}
+          aria-controls={bodyId}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? "See Less" : "See More"}
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -204,34 +228,53 @@ function RateTable({
     rate: number | null;
   }[];
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const bodyId = useId();
+
+  const collapsible = rows.length > COLLAPSED_ROWS;
+  const visibleRows = collapsible && !expanded ? rows.slice(0, COLLAPSED_ROWS) : rows;
+
   return (
-    <table>
-      <caption>{caption}</caption>
-      <thead>
-        <tr>
-          <th scope="col">Who</th>
-          <th scope="col">Flagged</th>
-          <th scope="col">Eligible</th>
-          <th scope="col">Rate</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.length === 0 ? (
+    <div className="board">
+      <table>
+        <caption>{caption}</caption>
+        <thead>
           <tr>
-            <td colSpan={4}>None in this window.</td>
+            <th scope="col">Who</th>
+            <th scope="col">Flagged</th>
+            <th scope="col">Eligible</th>
+            <th scope="col">Rate</th>
           </tr>
-        ) : (
-          rows.map((row) => (
-            <tr key={row.key}>
-              <td>{row.label}</td>
-              <td>{exact(row.flagged)}</td>
-              <td>{exact(row.eligible)}</td>
-              <td id={factId("rubberstamp", row.subject)}>{exact(row.rate)}</td>
+        </thead>
+        <tbody id={bodyId}>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={4}>None in this window.</td>
             </tr>
-          ))
-        )}
-      </tbody>
-    </table>
+          ) : (
+            visibleRows.map((row) => (
+              <tr key={row.key}>
+                <td>{row.label}</td>
+                <td>{exact(row.flagged)}</td>
+                <td>{exact(row.eligible)}</td>
+                <td id={factId("rubberstamp", row.subject)}>{exact(row.rate)}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+      {collapsible ? (
+        <button
+          type="button"
+          className="see-more"
+          aria-expanded={expanded}
+          aria-controls={bodyId}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? "See Less" : "See More"}
+        </button>
+      ) : null}
+    </div>
   );
 }
 
