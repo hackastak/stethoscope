@@ -62,6 +62,10 @@ export type MetricWindow = {
 };
 
 /** Default metric span when `since` is omitted: 30 days, in seconds. */
+// 30-day default read window. Must match the SPA's `DEFAULT_RANGE_DAYS`
+// (web/src/components/range.ts). Kept as a local literal rather than a shared
+// import: the two live in different packages, and each is independently pinned
+// to 30 by its own test, so a drift on either side fails that side's suite.
 export const DEFAULT_METRIC_WINDOW_SECONDS = 30 * 24 * 60 * 60;
 
 export type MetricWindowQuery = {

@@ -10,7 +10,7 @@ import {
   users,
 } from "../../src/db/schema.js";
 import { GHOST_ACTOR, type GitHubClient } from "../../src/github/index.js";
-import { syncRepo } from "../../src/sync/index.js";
+import { syncRepo } from "../../src/sync/syncRepo.js";
 
 const LIST = "GET /repos/{owner}/{repo}/pulls";
 const DETAIL = "GET /repos/{owner}/{repo}/pulls/{pull_number}";

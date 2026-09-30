@@ -6,7 +6,11 @@ export type UtcDateRange = {
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Matches the read-path default span in `DEFAULT_METRIC_WINDOW_SECONDS`. */
+// 30-day default picker span. Must match the API read window
+// (`DEFAULT_METRIC_WINDOW_SECONDS` in src/metrics/loaders.ts). Kept local, not a
+// shared import: the two live in different packages (and the web imports src
+// type-only by design), and each is independently pinned to 30 by its own test,
+// so a drift on either side fails that side's suite.
 export const DEFAULT_RANGE_DAYS = 30;
 
 export function defaultUtcDateRange(nowMs: number): UtcDateRange {

@@ -1,3 +1,4 @@
+import { compareLogin } from "../lib/compareLogin.js";
 import type { MetricPullRequest, MetricReview, MetricUser } from "./loaders.js";
 
 /** Matches `FAST_APPROVAL_SECONDS` in config. Callers should pass the configured value. */
@@ -71,12 +72,6 @@ export type DetectRubberStampsOptions = {
 type ApprovalDraft = RubberStampApproval & {
   submittedAt: number;
 };
-
-function compareLogin(left: string, right: string): number {
-  if (left < right) return -1;
-  if (left > right) return 1;
-  return 0;
-}
 
 function prSize(pullRequest: MetricPullRequest): number {
   return pullRequest.additions + pullRequest.deletions;

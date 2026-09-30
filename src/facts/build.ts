@@ -1,3 +1,4 @@
+import { compareLogin } from "../lib/compareLogin.js";
 import { compareByCountDesc, type Leaderboards } from "../metrics/leaderboards.js";
 import type { CycleTimeReport, CycleTimeStats } from "../metrics/cycletime.js";
 import type { LoadBalanceReport } from "../metrics/loadbalance.js";
@@ -85,12 +86,6 @@ function fact(
     unit,
     detail,
   };
-}
-
-function compareLogin(left: string, right: string): number {
-  if (left < right) return -1;
-  if (left > right) return 1;
-  return 0;
 }
 
 function counted(count: number, singular: string, plural: string): string {

@@ -1,3 +1,4 @@
+import { compareLogin } from "../lib/compareLogin.js";
 import type { MetricPullRequest, MetricUser } from "./loaders.js";
 
 /** Matches `MIN_RECIPROCITY_INTERACTIONS` in config. Callers should pass the configured value. */
@@ -51,12 +52,6 @@ type DirectedWeight = {
 
 function pairKey(reviewerGithubId: number, authorGithubId: number): string {
   return `${reviewerGithubId}->${authorGithubId}`;
-}
-
-function compareLogin(left: string, right: string): number {
-  if (left < right) return -1;
-  if (left > right) return 1;
-  return 0;
 }
 
 function balance(given: number, received: number): number {

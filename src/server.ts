@@ -7,7 +7,7 @@ import { createAnthropicProvider } from "./llm/anthropic.js";
 
 type App = Awaited<ReturnType<typeof buildApp>>;
 
-export function registerShutdown(app: App): void {
+function registerShutdown(app: App): void {
   const shutdown = async (): Promise<void> => {
     try {
       await app.close();
@@ -25,7 +25,7 @@ export function registerShutdown(app: App): void {
   });
 }
 
-export async function listen(app: App, config: Config): Promise<void> {
+async function listen(app: App, config: Config): Promise<void> {
   await app.listen({ port: config.port, host: "127.0.0.1" });
 }
 
