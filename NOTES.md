@@ -67,7 +67,7 @@ The rate is flagged approvals over eligible approvals. Eligible means `APPROVED`
 
 Why: coverage can be high while scrutiny is not. A fast, silent approval on a large change is the cheap proxy the API can see.
 
-Blind spots: a fast silent approval of a typo is correct, which is why the size floor exists. Review that happened in person, or in a comment outside the review-comment API, looks silent and will false-positive. The clock is a lower bound on attention, not a measure of it. `ready_at` is almost always null, because the pull payload has no ready-for-review stamp, so draft time is included in the wait.
+Blind spots: a fast silent approval of a typo is correct, which is why the size floor exists. Review that happened in person, or in a comment outside the review-comment API, looks silent and will false-positive. The clock is a lower bound on attention, not a measure of it. `ready_at` is read from the issue timeline's ready-for-review event, so a draft's time before it was marked ready is excluded from the wait. It is null only for pull requests that were never drafts, which were ready at creation and fall back to `created_at`.
 
 ### Also computed
 
@@ -81,7 +81,6 @@ Login with GitHub is the hosted version, and it is not built. It would be a GitH
 
 ## What I'd do next
 
-- Read the issue timeline during sync and set `ready_at` from the ready-for-review event, so draft time is not counted as waiting for review.
 - Add a scheduled sync that calls the same upsert. The store already separates fetch from query.
 - For a hosted deploy, swap the database driver and the table definitions from `better-sqlite3` / `sqliteTable` to Drizzle's Postgres driver. The metric functions do not change. Docker shows up at that point: a Postgres service plus the API. It is absent now because SQLite needs no extra process. This is not a one-line swap. The schema imports `drizzle-orm/sqlite-core`, including integer booleans and SQL checks.
 - Plot the same facts across successive windows. Add a second forge behind the fetch interface. Keep the deterministic eval, and add a graded rubric only as a second pass. `npm run eval` stays manual. It can spend a real model call, so CI does not run it.

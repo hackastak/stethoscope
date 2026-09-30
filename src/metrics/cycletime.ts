@@ -18,7 +18,7 @@ export type CycleTimePull = {
   author: MetricUser;
   /**
    * Start of the first interval: `readyAt` when the sync stored one, otherwise `createdAt`.
-   * The pull payload has no ready-for-review stamp, so most rows fall back to creation.
+   * `readyAt` is read from the issue timeline's ready-for-review event, so only PRs that were never drafts fall back to creation.
    */
   readyAt: number;
   /** Earliest non-author review of any state, including DISMISSED. Null when nobody else reviewed. */
