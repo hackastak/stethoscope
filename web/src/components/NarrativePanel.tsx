@@ -34,6 +34,13 @@ export function highlightFact(id: string): void {
   if (typeof target.scrollIntoView === "function") {
     target.scrollIntoView({ block: "nearest" });
   }
+  // Move focus to the cited cell so the jump is announced, not just scrolled. A table cell is not
+  // focusable by default, so make it programmatically focusable first; preventScroll leaves the
+  // scrollIntoView above in charge of positioning (Q52).
+  target.setAttribute("tabindex", "-1");
+  if (typeof target.focus === "function") {
+    target.focus({ preventScroll: true });
+  }
 }
 
 function errorMessage(error: unknown): string {

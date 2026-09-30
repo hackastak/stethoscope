@@ -162,6 +162,10 @@ describe("NarrativePanel", () => {
     expect(cell?.textContent).toBe("9");
     await user.click(chip);
     expect(cell?.getAttribute("data-cited")).toBe("true");
+    // The jump moves focus to the cited cell (made focusable first) so it is announced, not
+    // just scrolled into view (Q52).
+    expect(cell?.getAttribute("tabindex")).toBe("-1");
+    expect(document.activeElement).toBe(cell);
   });
 
   it("does not link a fact the tables do not render", async () => {
