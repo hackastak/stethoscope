@@ -74,7 +74,13 @@ export function InsightTables({ client = api, window }: InsightTablesProps) {
     return <p role="status">Sync a repository to load insight tables.</p>;
   }
   if (insights.isError) {
-    return <p data-status="error">{errorMessage(insights.error)}</p>;
+    // role="alert" so a screen reader announces the failure; the "Error:" prefix is a non-color
+    // cue so the message does not rely on the rose color alone (Decisions Q46).
+    return (
+      <p role="alert" data-status="error">
+        Error: {errorMessage(insights.error)}
+      </p>
+    );
   }
   if (!insights.data) {
     return (

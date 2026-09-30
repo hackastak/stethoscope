@@ -164,8 +164,8 @@ describe("InsightTables", () => {
         });
       },
     } as unknown as ApiClient);
-    expect(await screen.findByText("Repository not found")).toBeTruthy();
-    expect(screen.queryByRole("alert")).toBeNull();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Repository not found");
     expect(screen.queryByRole("table")).toBeNull();
   });
 });

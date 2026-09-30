@@ -183,6 +183,7 @@ describe("ReciprocityGraph", () => {
         });
       },
     } as unknown as ApiClient);
-    expect(await screen.findByText("No synced data for ada/scope between 1 and 2.")).toBeTruthy();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("No synced data for ada/scope between 1 and 2.");
   });
 });

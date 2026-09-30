@@ -112,7 +112,13 @@ export function ReciprocityGraph({ client = api, window }: ReciprocityGraphProps
     return <p role="status">Sync a repository to load the reciprocity graph.</p>;
   }
   if (graph.isError) {
-    return <p data-status="error">{errorMessage(graph.error)}</p>;
+    // role="alert" so a screen reader announces the failure; the "Error:" prefix is a non-color
+    // cue so the message does not rely on the rose color alone (Decisions Q46).
+    return (
+      <p role="alert" data-status="error">
+        Error: {errorMessage(graph.error)}
+      </p>
+    );
   }
   if (!data) {
     return (
