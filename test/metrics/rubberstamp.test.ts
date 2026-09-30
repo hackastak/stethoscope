@@ -235,14 +235,19 @@ describe("detectRubberStamps", () => {
     ]);
   });
 
-  it("includes a self-approval in the reviewer's rate and as its own pair", () => {
+  it("excludes a self-approval, keeping only the non-author reviewer's pair", () => {
     const report = detectRubberStamps(
       { pullRequests: [pull(ada, 1, [review(ada, 10, 1_010), review(grace, 11, 1_010)])] },
       thresholds,
     );
 
+    // ada's approval of ada's own PR is dropped; only grace -> ada survives, matching how
+    // reciprocity, cycle time, and the reviewer leaderboard all drop self-reviews.
+    expect(report.approvals.map((approval) => approval.reviewGithubId)).toEqual([11]);
+    expect(report.reviewers).toEqual([
+      expect.objectContaining({ reviewer: grace, flagged: 1, eligible: 1, rate: 1 }),
+    ]);
     expect(report.pairs).toEqual([
-      expect.objectContaining({ reviewer: ada, author: ada, flagged: 1, eligible: 1 }),
       expect.objectContaining({ reviewer: grace, author: ada, flagged: 1, eligible: 1 }),
     ]);
   });
@@ -255,24 +260,15 @@ describe("detectRubberStamps", () => {
     expect(report.pairs).toEqual([]);
   });
 
-  it("scores a single user's self-approval with the same three boundaries", () => {
-    const atTime = detectRubberStamps(
-      { pullRequests: [pull(ada, 1, [review(ada, 10, 1_300)])] },
-      thresholds,
-    );
-    const flagged = detectRubberStamps(
-      { pullRequests: [pull(ada, 2, [review(ada, 11, 1_299)])] },
+  it("drops a PR whose only approval is the author's own self-approval", () => {
+    const report = detectRubberStamps(
+      { pullRequests: [pull(ada, 1, [review(ada, 10, 1_299)])] },
       thresholds,
     );
 
-    expect(atTime.approvals[0]).toMatchObject({ timeToApproval: 300, flagged: false });
-    expect(atTime.reviewers).toEqual([
-      expect.objectContaining({ reviewer: ada, flagged: 0, eligible: 1, rate: 0 }),
-    ]);
-    expect(atTime.pairs).toEqual([
-      expect.objectContaining({ reviewer: ada, author: ada, flagged: 0, eligible: 1, rate: 0 }),
-    ]);
-    expect(flagged.reviewers[0]).toMatchObject({ reviewer: ada, flagged: 1, eligible: 1, rate: 1 });
+    expect(report.approvals).toEqual([]);
+    expect(report.reviewers).toEqual([]);
+    expect(report.pairs).toEqual([]);
   });
 
   it("uses the configured defaults and returns a null rate when nobody approved", () => {

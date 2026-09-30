@@ -35,8 +35,8 @@ export type RubberStampApproval = {
 export type RubberStampRate = {
   flagged: number;
   /**
-   * APPROVED reviews with a non-negative time-to-approval.
-   * Non-approvals and approvals submitted before every baseline are excluded, not counted as clean.
+   * Non-self APPROVED reviews with a non-negative time-to-approval.
+   * Non-approvals, self-approvals, and approvals submitted before every baseline are excluded, not counted as clean.
    */
   eligible: number;
   /** `flagged / eligible`. Null when `eligible` is 0 — absence is not a zero rate. */
@@ -59,7 +59,7 @@ export type RubberStampReport = {
   approvals: RubberStampApproval[];
   /** One row per reviewer with at least one eligible approval. Rate is flagged / eligible. */
   reviewers: RubberStampReviewer[];
-  /** Same denominator, split by reviewer → author, including self-approval. */
+  /** Same denominator, split by reviewer → author. Self-approvals are excluded, so no self-pairs appear. */
   pairs: RubberStampPair[];
 };
 
@@ -80,6 +80,10 @@ function compareLogin(left: string, right: string): number {
 
 function prSize(pullRequest: MetricPullRequest): number {
   return pullRequest.additions + pullRequest.deletions;
+}
+
+function isSelfReview(pullRequest: MetricPullRequest, review: MetricReview): boolean {
+  return review.reviewer.githubId === pullRequest.author.githubId;
 }
 
 /**
@@ -113,6 +117,10 @@ function evaluate(
   },
 ): ApprovalDraft | undefined {
   if (review.state !== "APPROVED") return undefined;
+  // A self-approval is not someone else waving a PR through, and GitHub blocks approving
+  // your own PR anyway. Excluded here so rubber-stamp agrees with reciprocity, cycle time,
+  // and the reviewer leaderboard, which all drop self-reviews.
+  if (isSelfReview(pullRequest, review)) return undefined;
   const timeToApproval = review.submittedAt - approvalBaseline(pullRequest, review.submittedAt);
   if (timeToApproval < 0) return undefined;
   const commentCount = reviewerCommentCount(pullRequest, review);
@@ -139,6 +147,7 @@ function evaluate(
  * Low-scrutiny approvals for one already-loaded metric window.
  * A flag needs all three: faster than `fastApprovalSeconds`, zero comments by that reviewer on the PR,
  * and `additions + deletions` strictly above `minPrSize`. Does not read config.
+ * Self-approvals are excluded, matching the other review metrics.
  *
  * Offline or in-person review is invisible here and can false-positive. Small typo fixes are excluded by size.
  */
