@@ -33,6 +33,7 @@ export function App() {
         </div>
         <span
           className="api-pill"
+          role="status"
           data-status={health.isSuccess ? "ok" : health.isError ? "error" : "pending"}
         >
           API <strong>{apiStatus(health)}</strong>

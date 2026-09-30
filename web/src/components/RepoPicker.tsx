@@ -7,6 +7,9 @@ export type RepoPickerProps = {
   slug: string;
   onSlugChange: (slug: string) => void;
   disabled?: boolean;
+  /** Marks the owner/repo input invalid and points it at the error message. */
+  slugInvalid?: boolean;
+  slugDescribedById?: string;
 };
 
 export function RepoPicker({
@@ -16,6 +19,8 @@ export function RepoPicker({
   slug,
   onSlugChange,
   disabled = false,
+  slugInvalid = false,
+  slugDescribedById,
 }: RepoPickerProps) {
   const selected = repos.some((repo) => repo.fullName === slug) ? slug : "";
   const reposError =
@@ -62,6 +67,8 @@ export function RepoPicker({
           autoCorrect="off"
           spellCheck={false}
           autoComplete="off"
+          aria-invalid={slugInvalid}
+          aria-describedby={slugInvalid ? slugDescribedById : undefined}
           onChange={(event) => onSlugChange(event.target.value)}
         />
       </label>

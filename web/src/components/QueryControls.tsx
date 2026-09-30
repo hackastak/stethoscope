@@ -90,6 +90,12 @@ export function QueryControls({
     syncResult: sync.data ?? null,
   });
 
+  // A date-range block surfaces as the "idle" status; a failed submit as "error". Point the
+  // offending field's aria-describedby at the one status <p> and mark it aria-invalid (M9).
+  const dateInvalid = status?.kind === "idle";
+  const slugInvalid = status?.kind === "error";
+  const statusId = "query-status";
+
   return (
     <form onSubmit={onSubmit} aria-busy={busy}>
       <RepoPicker
@@ -99,6 +105,8 @@ export function QueryControls({
         slug={slug}
         onSlugChange={setSlug}
         disabled={busy}
+        slugInvalid={slugInvalid}
+        slugDescribedById={statusId}
       />
       <fieldset disabled={busy}>
         <legend>Date range (UTC)</legend>
@@ -108,6 +116,8 @@ export function QueryControls({
             id="since-date"
             type="date"
             value={dates.since}
+            aria-invalid={dateInvalid}
+            aria-describedby={dateInvalid ? statusId : undefined}
             onChange={(event) => {
               const since = event.target.value;
               setDates((current) => ({ ...current, since }));
@@ -120,6 +130,8 @@ export function QueryControls({
             id="until-date"
             type="date"
             value={dates.until}
+            aria-invalid={dateInvalid}
+            aria-describedby={dateInvalid ? statusId : undefined}
             onChange={(event) => {
               const until = event.target.value;
               setDates((current) => ({ ...current, until }));
@@ -131,7 +143,11 @@ export function QueryControls({
         Sync
       </button>
       {status ? (
-        <p role={status.kind === "error" ? "alert" : "status"} data-status={status.kind}>
+        <p
+          id={statusId}
+          role={status.kind === "error" ? "alert" : "status"}
+          data-status={status.kind}
+        >
           {status.text}
         </p>
       ) : null}

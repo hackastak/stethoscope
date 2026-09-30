@@ -129,6 +129,8 @@ describe("InsightTables", () => {
     expect(document.getElementById("fact:cycletime:approval_to_merge_p50")?.textContent).toBe("0");
     expect(screen.getByText("ada/scope · 100–200")).toBeTruthy();
     expect(screen.queryByRole("table", { name: "Pull requests" })).toBeNull();
+    // The section has a visible heading, consistent with the other cards (N5).
+    expect(screen.getByRole("heading", { name: "Insights" })).toBeTruthy();
   });
 
   it("says the window is empty when every board and interval has no rows", async () => {

@@ -141,6 +141,11 @@ describe("QueryControls", () => {
 
     expect((screen.getByRole("button", { name: "Sync" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText("Until must be on or after since.")).toBeTruthy();
+    // The block reason is associated with the date inputs, not just floated at the form bottom (M9).
+    const until = screen.getByLabelText("Until");
+    expect(until.getAttribute("aria-invalid")).toBe("true");
+    expect(until.getAttribute("aria-describedby")).toBe("query-status");
+    expect(screen.getByText("Until must be on or after since.").id).toBe("query-status");
   });
 
   it("shows the API 400 message and does not load insights", async () => {
@@ -167,6 +172,10 @@ describe("QueryControls", () => {
       "owner: must match ^[A-Za-z0-9_.-]+$",
     );
     expect(insights).not.toHaveBeenCalled();
+    // The submit error marks the owner/repo field invalid and points it at the message (M9).
+    const slugInput = screen.getByRole("textbox", { name: "owner/repo" });
+    expect(slugInput.getAttribute("aria-invalid")).toBe("true");
+    expect(slugInput.getAttribute("aria-describedby")).toBe("query-status");
   });
 
   it("still syncs a typed repo when discovery fails", async () => {

@@ -95,7 +95,8 @@ export function InsightTables({ client = api, window }: InsightTablesProps) {
 
   const data = insights.data;
   return (
-    <section aria-label="Insights">
+    <section aria-labelledby="insights-heading">
+      <h2 id="insights-heading">Insights</h2>
       <p>
         {data.window.owner}/{data.window.repo} · {data.window.since}–{data.window.until}
       </p>
