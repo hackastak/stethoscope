@@ -1,10 +1,6 @@
 export { healthRoutes } from "./health.js";
-export { insightsRoutes, loadInsights, type InsightsRouteOptions } from "./insights.js";
-export {
-  insightsGraphRoutes,
-  loadInsightsGraph,
-  type InsightsGraphRouteOptions,
-} from "./insightsGraph.js";
+export { insightsRoutes, type InsightsRouteOptions } from "./insights.js";
+export { insightsGraphRoutes, type InsightsGraphRouteOptions } from "./insightsGraph.js";
 export {
   NARRATIVE_RATE_LIMIT_MAX,
   NARRATIVE_RATE_LIMIT_WINDOW_MS,

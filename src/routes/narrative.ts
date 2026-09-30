@@ -20,7 +20,7 @@ import {
   type NarrativeBody,
   type NarrativeResponse,
 } from "../schemas/narrative.js";
-import { loadInsights, type InsightsConfig } from "./insights.js";
+import { loadInsights, type InsightsConfig } from "../services/insights.js";
 
 /** Local demo budget. Not an env var — the config list is closed. Decisions Q33. */
 export const NARRATIVE_RATE_LIMIT_MAX = 10;
