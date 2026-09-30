@@ -87,6 +87,6 @@ Login with GitHub is the hosted version, and it is not built. It would be a GitH
 
 ## What AI was used for
 
-AI coding agents implemented this repository from a written task plan: the API, the metrics, the tests, the page, the README, and this file. The tools were Claude Code and pi. The plan named the metrics, the grounding rule, and the acceptance checks before the code for those tasks was written. Where a task had more than one defensible answer, the choice was written down instead of left in a commit message.
+AI coding agents implemented this repository from a written task plan outlining the stack, individual features, and foreseeable gotchas: most of the API, the metrics, the tests, the page, the README, and this file. The tools were Claude Code and Pi using models from Anthropic, OpenAI, and xAI depending on the task. The plan named the metrics, the grounding rule, and the acceptance checks before the code for those tasks was written. Where a task had more than one defensible answer, the choice was written down in a separate file and reviewed by me instead of left in a commit message. AI was also used for security and performance scans after each feature implementation and after development was complete. 
 
 The narrative eval does not use a model as a judge. It checks shape, confidence range, and citation ids. The only model call in the running product is `POST /narrative`, which uses the Anthropic key and `LLM_MODEL` from the environment.
