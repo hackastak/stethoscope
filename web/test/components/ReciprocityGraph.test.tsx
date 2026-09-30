@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, type ApiClient, type InsightsGraphResponse } from "../../src/api/client.js";
@@ -117,8 +117,9 @@ describe("ReciprocityGraph", () => {
     expect(await screen.findByTestId("force-graph")).toBeTruthy();
     expect(insightsGraph).toHaveBeenCalledWith(WINDOW);
 
-    const ada = screen.getByRole("button", { name: "ada" });
-    const bea = screen.getByRole("button", { name: "bea<script>" });
+    // The canvas frame is aria-hidden, so the mock's nodes are queried by attribute, not role.
+    const ada = document.querySelector<HTMLElement>("[data-node='ada']")!;
+    const bea = document.querySelector<HTMLElement>("[data-node='bea']")!;
     expect(ada.getAttribute("data-size")).toBe(
       String(nodeArea({ reviewsGiven: 4, reviewsReceived: 1 })),
     );
@@ -152,14 +153,34 @@ describe("ReciprocityGraph", () => {
     expect(list.querySelector("[data-flagged='true']")?.textContent).toContain("ada → bea");
   });
 
+  it("exposes per-node totals in a table and hides the canvas from assistive tech", async () => {
+    renderGraph({ insightsGraph: async () => graph() } as unknown as ApiClient);
+
+    // The non-visual path for node totals: a table, not the mouse-only hover tooltip.
+    const table = await screen.findByRole("table", { name: "Reviews by person" });
+    const ada = within(table).getByRole("row", { name: /ada/ });
+    expect(within(ada).getAllByRole("cell").map((cell) => cell.textContent)).toEqual([
+      "ada",
+      "4",
+      "1",
+    ]);
+    // bea<script> shows as text, given 0 received 4.
+    expect(table.textContent).toContain("bea<script>");
+
+    // The canvas is decorative here (the tables carry the data), so it is aria-hidden.
+    expect(document.querySelector(".graph-frame")?.getAttribute("aria-hidden")).toBe("true");
+  });
+
   it("shows given and received when a node is hovered", async () => {
     const user = userEvent.setup();
     renderGraph({ insightsGraph: async () => graph() } as unknown as ApiClient);
 
-    await user.hover(await screen.findByRole("button", { name: "ada" }));
+    await screen.findByTestId("force-graph");
+    const adaNode = document.querySelector<HTMLElement>("[data-node='ada']")!;
+    await user.hover(adaNode);
     expect(screen.getByRole("status").textContent).toBe("ada: given 4, received 1");
 
-    await user.unhover(screen.getByRole("button", { name: "ada" }));
+    await user.unhover(adaNode);
     expect(screen.getByRole("status").textContent).toBe(
       "Hover a person to see reviews given and received.",
     );

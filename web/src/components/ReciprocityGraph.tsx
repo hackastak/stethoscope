@@ -147,7 +147,7 @@ export function ReciprocityGraph({ client = api, window }: ReciprocityGraphProps
           <p role="status" data-hover={hovered ? "node" : "none"}>
             {hovered ? hoverText(hovered) : "Hover a person to see reviews given and received."}
           </p>
-          <div className="graph-frame" ref={frame}>
+          <div className="graph-frame" ref={frame} aria-hidden="true">
             <ForceGraph2D
               graphData={graphData}
               width={width}
@@ -167,6 +167,30 @@ export function ReciprocityGraph({ client = api, window }: ReciprocityGraphProps
               cooldownTicks={120}
             />
           </div>
+          {/*
+            The canvas above is aria-hidden, so these two tables are the non-visual path:
+            per-person given/received (the hover-only tooltip's equivalent, Q48) and the edge
+            list (Q50). Both read the same payload the graph draws.
+          */}
+          <table>
+            <caption>Reviews by person</caption>
+            <thead>
+              <tr>
+                <th scope="col">Login</th>
+                <th scope="col">Reviews given</th>
+                <th scope="col">Reviews received</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.nodes.map((node) => (
+                <tr key={node.id}>
+                  <td>{node.label}</td>
+                  <td>{node.reviewsGiven}</td>
+                  <td>{node.reviewsReceived}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           <ul aria-label="Reciprocity edges">
             {data.edges.map((edge) => (
               <li
