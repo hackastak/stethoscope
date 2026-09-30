@@ -1,9 +1,15 @@
-import type { FastifyPluginAsync, FastifyRequest } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import type { Config } from "../config.js";
 import type { AppDatabase } from "../db/client.js";
 import type { Fact } from "../facts/types.js";
 import { httpError, problem, validationError } from "../lib/errors.js";
+import {
+  clientIp,
+  createFixedWindowLimiter,
+  rateLimitMessage,
+  type RateLimit,
+} from "../lib/rateLimit.js";
 import { createMemoryNarrativeCache, type NarrativeCache } from "../llm/cache.js";
 import { synthesize } from "../llm/narrative.js";
 import type { LLMProvider } from "../llm/provider.js";
@@ -20,11 +26,6 @@ import { loadInsights, type InsightsConfig } from "./insights.js";
 export const NARRATIVE_RATE_LIMIT_MAX = 10;
 export const NARRATIVE_RATE_LIMIT_WINDOW_MS = 60_000;
 
-export type NarrativeRateLimit = {
-  max: number;
-  windowMs: number;
-};
-
 export type NarrativeRouteOptions = {
   db: AppDatabase;
   config: InsightsConfig & Pick<Config, "llmModel">;
@@ -33,52 +34,8 @@ export type NarrativeRouteOptions = {
   cache?: NarrativeCache;
   /** Epoch milliseconds. Same clock as omitted bounds and the rate-limit window. */
   now?: () => number;
-  rateLimit?: NarrativeRateLimit;
+  rateLimit?: RateLimit;
 };
-
-type Bucket = {
-  readonly windowStart: number;
-  readonly count: number;
-};
-
-type RateLimitDecision = { allowed: true } | { allowed: false; retryAfterSeconds: number };
-
-function createFixedWindowLimiter(max: number, windowMs: number, now: () => number) {
-  const buckets = new Map<string, Bucket>();
-  return {
-    take(key: string): RateLimitDecision {
-      const at = now();
-      const expiredBefore = at - windowMs;
-      for (const [ip, bucket] of buckets) {
-        if (bucket.windowStart <= expiredBefore) buckets.delete(ip);
-      }
-      const current = buckets.get(key);
-      if (!current) {
-        buckets.set(key, { windowStart: at, count: 1 });
-        return { allowed: true };
-      }
-      if (current.count >= max) {
-        const remainingMs = current.windowStart + windowMs - at;
-        return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil(remainingMs / 1000)) };
-      }
-      buckets.set(key, { windowStart: current.windowStart, count: current.count + 1 });
-      return { allowed: true };
-    },
-  };
-}
-
-function clientIp(request: FastifyRequest): string {
-  return request.ip.length > 0 ? request.ip : "unknown";
-}
-
-function rateLimitMessage(max: number, windowMs: number, retryAfterSeconds: number): string {
-  const windowSeconds = windowMs / 1000;
-  return [
-    "Too many narrative requests from this IP.",
-    `Limit is ${max} per ${windowSeconds} seconds.`,
-    `Retry after ${retryAfterSeconds} seconds.`,
-  ].join(" ");
-}
 
 function resolveEvidence(
   ids: readonly string[],
@@ -142,7 +99,10 @@ export const narrativeRoutes: FastifyPluginAsync<NarrativeRouteOptions> = async 
         return reply
           .status(429)
           .send(
-            problem(429, rateLimitMessage(limit.max, limit.windowMs, decision.retryAfterSeconds)),
+            problem(
+              429,
+              rateLimitMessage("narrative", limit.max, limit.windowMs, decision.retryAfterSeconds),
+            ),
           );
       },
     },

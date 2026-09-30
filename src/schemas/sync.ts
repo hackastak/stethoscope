@@ -61,6 +61,13 @@ export function parseInstant(value: number | string): number | null {
   return Math.floor(parsed / 1000);
 }
 
+/**
+ * Largest `until - since` span POST /sync will accept, in seconds (366 days).
+ * A wider window can fan out enough GitHub pagination to exhaust the shared PAT and block the
+ * event loop, so it is rejected before any GitHub call. 12x the 30-day default read window.
+ */
+export const MAX_SYNC_WINDOW_SECONDS = 366 * 24 * 60 * 60;
+
 export const syncBodySchema = z
   .object({
     owner: slug,
@@ -91,6 +98,13 @@ export const syncBodySchema = z
         code: z.ZodIssueCode.custom,
         path: ["until"],
         message: "must be on or after since",
+      });
+    }
+    if (since !== null && until !== null && until - since > MAX_SYNC_WINDOW_SECONDS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["until"],
+        message: `window must not exceed ${MAX_SYNC_WINDOW_SECONDS} seconds (366 days)`,
       });
     }
   })

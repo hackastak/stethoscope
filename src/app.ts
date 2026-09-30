@@ -6,10 +6,11 @@ import type { GitHubClient } from "./github/client.js";
 import type { LLMProvider } from "./llm/provider.js";
 import { errorToProblem, problem } from "./lib/errors.js";
 import { createLogger } from "./lib/logger.js";
+import type { RateLimit } from "./lib/rateLimit.js";
 import { healthRoutes } from "./routes/health.js";
 import { insightsRoutes } from "./routes/insights.js";
 import { insightsGraphRoutes } from "./routes/insightsGraph.js";
-import { narrativeRoutes, type NarrativeRateLimit } from "./routes/narrative.js";
+import { narrativeRoutes } from "./routes/narrative.js";
 import { reposRoutes } from "./routes/repos.js";
 import { syncRoutes } from "./routes/sync.js";
 
@@ -42,8 +43,10 @@ export type BuildAppOptions = {
   /** Injected completion seam. Without it, POST /narrative is not registered. */
   llm?: LLMProvider;
   /** Overrides the narrative route's per-IP limit. Production uses the route defaults. */
-  narrativeRateLimit?: NarrativeRateLimit;
-  /** Epoch milliseconds. Used for omitted insight bounds and the narrative rate-limit clock. */
+  narrativeRateLimit?: RateLimit;
+  /** Overrides the sync route's per-IP limit. Production uses the route defaults. */
+  syncRateLimit?: RateLimit;
+  /** Epoch milliseconds. Used for omitted insight bounds and the narrative/sync rate-limit clocks. */
   now?: () => number;
 };
 
@@ -81,7 +84,12 @@ export async function buildApp(options: BuildAppOptions) {
     await app.register(reposRoutes, { github: options.github });
   }
   if (options.db && options.github) {
-    await app.register(syncRoutes, { db: options.db, github: options.github });
+    await app.register(syncRoutes, {
+      db: options.db,
+      github: options.github,
+      now: options.now,
+      rateLimit: options.syncRateLimit,
+    });
   }
   if (options.db) {
     await app.register(insightsRoutes, {

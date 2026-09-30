@@ -169,6 +169,87 @@ describe("POST /sync", () => {
     client.close();
   });
 
+  it("rate-limits repeated syncs from one IP with a 429 and retry-after", async () => {
+    const client = migrated();
+    const app = await buildApp({
+      config: testConfig,
+      logger: false,
+      db: client.db,
+      github: github("ok"),
+      syncRateLimit: { max: 1, windowMs: 60_000 },
+      now: () => 1_700_000_000_000,
+    });
+    const payload = {
+      owner: "acme",
+      repo: "widgets",
+      since: "2023-11-01T00:00:00Z",
+      until: "2023-11-30T23:59:59Z",
+    };
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/sync",
+      payload,
+      remoteAddress: "10.0.0.1",
+    });
+    const second = await app.inject({
+      method: "POST",
+      url: "/sync",
+      payload,
+      remoteAddress: "10.0.0.1",
+    });
+    const otherIp = await app.inject({
+      method: "POST",
+      url: "/sync",
+      payload,
+      remoteAddress: "10.0.0.2",
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(429);
+    expect(second.headers["retry-after"]).toBe("60");
+    expect(second.json()).toEqual({
+      status: 429,
+      error: "Too Many Requests",
+      message:
+        "Too many sync requests from this IP. Limit is 1 per 60 seconds. Retry after 60 seconds.",
+    });
+    // A blocked request never reaches GitHub, but a different IP has its own budget.
+    expect(otherIp.statusCode).toBe(200);
+
+    await app.close();
+    client.close();
+  });
+
+  it("rejects a window wider than the 366-day cap before any GitHub call", async () => {
+    const client = migrated();
+    const github367 = github("ok");
+    const app = await buildApp({
+      config: testConfig,
+      logger: false,
+      db: client.db,
+      github: github367,
+    });
+    const since = Date.parse("2023-01-01T00:00:00Z") / 1000;
+    const until = since + 367 * 24 * 60 * 60;
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/sync",
+      payload: { owner: "acme", repo: "widgets", since, until },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect((response.json() as { message: string }).message).toMatch(
+      /until: window must not exceed/,
+    );
+    expect(github367.request).not.toHaveBeenCalled();
+    expect(client.db.select().from(pullRequests).all()).toHaveLength(0);
+
+    await app.close();
+    client.close();
+  });
+
   it("returns 404 when the repository is unknown", async () => {
     const client = migrated();
 
