@@ -47,11 +47,11 @@ export function App() {
           <div className="card span-2">
             <InsightTables window={window} />
           </div>
-          <div className="card">
-            <ReciprocityGraph window={window} />
-          </div>
-          <div className="card">
+          <div className="card span-2">
             <NarrativePanel window={window} />
+          </div>
+          <div className="card span-2">
+            <ReciprocityGraph window={window} />
           </div>
         </div>
       </main>

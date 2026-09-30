@@ -168,9 +168,9 @@ export function ReciprocityGraph({ client = api, window }: ReciprocityGraphProps
             />
           </div>
           {/*
-            The canvas above is aria-hidden, so these two tables are the non-visual path:
-            per-person given/received (the hover-only tooltip's equivalent, Q48) and the edge
-            list (Q50). Both read the same payload the graph draws.
+            The canvas above is aria-hidden, so these are the non-visual path: the visible
+            per-person given/received table (the hover-only tooltip's equivalent, Q48), plus the
+            edge list (Q50) which is kept for screen readers but visually hidden by request.
           */}
           <table>
             <caption>Reviews by person</caption>
@@ -191,7 +191,7 @@ export function ReciprocityGraph({ client = api, window }: ReciprocityGraphProps
               ))}
             </tbody>
           </table>
-          <ul aria-label="Reciprocity edges">
+          <ul className="visually-hidden" aria-label="Reciprocity edges">
             {data.edges.map((edge) => (
               <li
                 key={`${edge.source}->${edge.target}`}
