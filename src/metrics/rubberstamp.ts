@@ -58,9 +58,15 @@ export type RubberStampReport = {
   minPrSize: number;
   /** Eligible approvals only, ordered by PR number, submit time, then review github id. */
   approvals: RubberStampApproval[];
-  /** One row per reviewer with at least one eligible approval. Rate is flagged / eligible. */
+  /**
+   * One row per reviewer with at least one eligible approval. Rate is flagged / eligible.
+   * Ordered by eligible approvals, most first (login then github id break ties).
+   */
   reviewers: RubberStampReviewer[];
-  /** Same denominator, split by reviewer → author. Self-approvals are excluded, so no self-pairs appear. */
+  /**
+   * Same denominator, split by reviewer → author. Self-approvals are excluded, so no self-pairs appear.
+   * Ordered by eligible approvals, most first (reviewer/author login then github id break ties).
+   */
   pairs: RubberStampPair[];
 };
 
@@ -194,6 +200,9 @@ function aggregateReviewers(approvals: readonly RubberStampApproval[]): RubberSt
     .map(({ reviewer, flagged, eligible }) => ({ reviewer, ...toRate(flagged, eligible) }))
     .sort(
       (left, right) =>
+        // Most eligible approvals first; login then github id break ties so the order stays
+        // deterministic and locale-independent.
+        right.eligible - left.eligible ||
         compareLogin(left.reviewer.login, right.reviewer.login) ||
         left.reviewer.githubId - right.reviewer.githubId,
     );
@@ -226,6 +235,9 @@ function aggregatePairs(approvals: readonly RubberStampApproval[]): RubberStampP
     }))
     .sort(
       (left, right) =>
+        // Most eligible approvals first; reviewer/author login then github id break ties so the
+        // order stays deterministic and locale-independent.
+        right.eligible - left.eligible ||
         compareLogin(left.reviewer.login, right.reviewer.login) ||
         compareLogin(left.author.login, right.author.login) ||
         left.reviewer.githubId - right.reviewer.githubId ||

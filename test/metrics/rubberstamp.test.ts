@@ -304,4 +304,37 @@ describe("detectRubberStamps", () => {
       "grace->linus",
     ]);
   });
+
+  it("orders reviewers and pairs by eligible approvals, most first, not alphabetically", () => {
+    const bob = user(4, "bob");
+    const zed = user(5, "zed");
+    const report = detectRubberStamps(
+      {
+        pullRequests: [
+          pull(zed, 1, [review(grace, 40, 1_010)]),
+          pull(zed, 2, [review(grace, 41, 1_010)]),
+          pull(zed, 3, [review(bob, 42, 1_010)]),
+          pull(zed, 4, [review(bob, 43, 1_010)]),
+          pull(zed, 5, [review(ada, 44, 1_010)]),
+        ],
+      },
+      thresholds,
+    );
+
+    // grace and bob each have 2 eligible approvals, ada has 1. Most-eligible leads; the 2-way tie
+    // falls back to login (bob before grace), so the order is NOT alphabetical — ada, which would
+    // lead an alphabetical sort, is last.
+    expect(report.reviewers.map((row) => [row.reviewer.login, row.eligible])).toEqual([
+      ["bob", 2],
+      ["grace", 2],
+      ["ada", 1],
+    ]);
+    expect(
+      report.pairs.map((pair) => [`${pair.reviewer.login}->${pair.author.login}`, pair.eligible]),
+    ).toEqual([
+      ["bob->zed", 2],
+      ["grace->zed", 2],
+      ["ada->zed", 1],
+    ]);
+  });
 });
