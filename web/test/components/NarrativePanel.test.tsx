@@ -9,7 +9,8 @@ import {
   type WindowQuery,
 } from "../../src/api/client.js";
 import { InsightTables } from "../../src/components/InsightTables.js";
-import { isTableFact, NarrativePanel } from "../../src/components/NarrativePanel.js";
+import { isTableFactId } from "../../../src/facts/grammar.js";
+import { NarrativePanel } from "../../src/components/NarrativePanel.js";
 import type { InsightsResponse } from "../../src/api/client.js";
 
 const WINDOW = {
@@ -182,9 +183,9 @@ describe("NarrativePanel", () => {
       await screen.findByText("fact:loadbalance:reviews_gini · 0.5 · Not in the tables."),
     ).toBeTruthy();
     expect(screen.queryByRole("link")).toBeNull();
-    expect(isTableFact("fact:loadbalance:reviews_gini")).toBe(false);
-    expect(isTableFact("fact:reciprocity:ada->bea")).toBe(false);
-    expect(isTableFact("fact:leaderboard:reviewers:ada")).toBe(true);
+    expect(isTableFactId("fact:loadbalance:reviews_gini")).toBe(false);
+    expect(isTableFactId("fact:reciprocity:ada->bea")).toBe(false);
+    expect(isTableFactId("fact:leaderboard:reviewers:ada")).toBe(true);
   });
 
   it("shows the API message and keeps the previous narrative off the page", async () => {

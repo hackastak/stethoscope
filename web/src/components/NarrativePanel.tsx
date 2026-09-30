@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isTableFactId } from "../../../src/facts/grammar.js";
 import { api, type ApiClient, type NarrativeResponse, type WindowQuery } from "../api/client.js";
 
 export type NarrativePanelProps = {
@@ -12,13 +13,6 @@ type PanelState =
   | { status: "pending" }
   | { status: "error"; message: string }
   | { status: "ready"; data: NarrativeResponse };
-
-const TABLE_FACT_ID = /^fact:(?:leaderboard|rubberstamp|cycletime):.+/;
-
-/** Leaderboard, rubber-stamp, and cycle-time facts are the citeable table cells. */
-export function isTableFact(id: string): boolean {
-  return TABLE_FACT_ID.test(id);
-}
 
 export function exact(value: number | null): string {
   return value === null ? "null" : String(value);
@@ -134,7 +128,7 @@ function NarrativeResult({ data }: { data: NarrativeResponse }) {
         <ul className="chips" aria-label="Evidence">
           {data.evidence.map((item, index) => (
             <li key={`${item.id}:${index}`}>
-              {isTableFact(item.id) ? (
+              {isTableFactId(item.id) ? (
                 <a className="chip" href={`#${item.id}`} onClick={() => highlightFact(item.id)}>
                   {item.id} · {exact(item.value)}
                 </a>

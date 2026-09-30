@@ -1,4 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import {
+  cycleTimeSubject,
+  factId,
+  leaderboardSubject,
+  rubberStampPairSubject,
+  rubberStampReviewerSubject,
+} from "../../../src/facts/grammar.js";
 import { api, type ApiClient, type InsightsResponse, type WindowQuery } from "../api/client.js";
 import { insightsQuery } from "../api/queries.js";
 
@@ -47,10 +54,6 @@ const INTERVALS: readonly {
 
 function exact(value: number | null): string {
   return value === null ? "null" : String(value);
-}
-
-function factId(kind: string, subject: string): string {
-  return `fact:${kind}:${subject}`;
 }
 
 function errorMessage(error: unknown): string {
@@ -120,7 +123,7 @@ export function InsightTables({ client = api, window }: InsightTablesProps) {
             rows={data.rubberStamp.reviewers.map((row) => ({
               key: String(row.reviewer.githubId),
               label: row.reviewer.login,
-              subject: row.reviewer.login,
+              subject: rubberStampReviewerSubject(row.reviewer.login),
               flagged: row.flagged,
               eligible: row.eligible,
               rate: row.rate,
@@ -131,7 +134,7 @@ export function InsightTables({ client = api, window }: InsightTablesProps) {
             rows={data.rubberStamp.pairs.map((row) => ({
               key: `${row.reviewer.githubId}->${row.author.githubId}`,
               label: `${row.reviewer.login} → ${row.author.login}`,
-              subject: `${row.reviewer.login}->${row.author.login}`,
+              subject: rubberStampPairSubject(row.reviewer.login, row.author.login),
               flagged: row.flagged,
               eligible: row.eligible,
               rate: row.rate,
@@ -175,7 +178,9 @@ function Leaderboard({
           rows.map((row) => (
             <tr key={row.githubId}>
               <td>{row.login}</td>
-              <td id={factId("leaderboard", `${factBoard}:${row.login}`)}>{exact(row.count)}</td>
+              <td id={factId("leaderboard", leaderboardSubject(factBoard, row.login))}>
+                {exact(row.count)}
+              </td>
             </tr>
           ))
         )}
@@ -247,9 +252,15 @@ function CycleTime({ cycle }: { cycle: InsightsResponse["cycleTime"] }) {
           return (
             <tr key={interval.key}>
               <td>{interval.label}</td>
-              <td id={factId("cycletime", `${interval.key}_n`)}>{exact(stats.count)}</td>
-              <td id={factId("cycletime", `${interval.key}_p50`)}>{exact(stats.median)}</td>
-              <td id={factId("cycletime", `${interval.key}_p75`)}>{exact(stats.p75)}</td>
+              <td id={factId("cycletime", cycleTimeSubject(interval.key, "n"))}>
+                {exact(stats.count)}
+              </td>
+              <td id={factId("cycletime", cycleTimeSubject(interval.key, "p50"))}>
+                {exact(stats.median)}
+              </td>
+              <td id={factId("cycletime", cycleTimeSubject(interval.key, "p75"))}>
+                {exact(stats.p75)}
+              </td>
             </tr>
           );
         })}

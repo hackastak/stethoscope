@@ -78,9 +78,12 @@ const metricUserSchema = z
   })
   .strict();
 
+// Derived from FACT_KINDS so the id prefix and the kind list have one definition, not two.
+const FACT_ID_PATTERN = new RegExp(`^fact:(${FACT_KINDS.join("|")}):.+$`);
+
 const factSchema = z
   .object({
-    id: z.string().regex(/^fact:(rubberstamp|reciprocity|cycletime|loadbalance|leaderboard):.+$/),
+    id: z.string().regex(FACT_ID_PATTERN),
     kind: z.enum(FACT_KINDS),
     subject: z.string().min(1),
     value: z.number().nullable(),

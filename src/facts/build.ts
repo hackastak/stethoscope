@@ -3,6 +3,13 @@ import type { CycleTimeReport, CycleTimeStats } from "../metrics/cycletime.js";
 import type { LoadBalanceReport } from "../metrics/loadbalance.js";
 import type { ReciprocityGraph } from "../metrics/reciprocity.js";
 import type { RubberStampReport } from "../metrics/rubberstamp.js";
+import {
+  cycleTimeSubject,
+  factId,
+  leaderboardSubject,
+  rubberStampPairSubject,
+  rubberStampReviewerSubject,
+} from "./grammar.js";
 import type { Fact, FactKind, FactUnit } from "./types.js";
 
 export type BuildFactsInput = {
@@ -71,7 +78,7 @@ function fact(
   detail: string,
 ): Fact {
   return {
-    id: `fact:${kind}:${subject}`,
+    id: factId(kind, subject),
     kind,
     subject,
     value,
@@ -111,7 +118,7 @@ function rubberStampFacts(report: RubberStampReport): Fact[] {
     ...reviewers.map((row) =>
       fact(
         "rubberstamp",
-        row.reviewer.login,
+        rubberStampReviewerSubject(row.reviewer.login),
         row.rate,
         "ratio",
         `Rubber-stamp rate for ${row.reviewer.login}: ${row.flagged} of ${row.eligible} eligible approvals ${row.flagged === 1 ? "was" : "were"} faster than ${report.fastApprovalSeconds}s, silent, and larger than ${report.minPrSize} lines.`,
@@ -120,7 +127,7 @@ function rubberStampFacts(report: RubberStampReport): Fact[] {
     ...pairs.map((row) =>
       fact(
         "rubberstamp",
-        `${row.reviewer.login}->${row.author.login}`,
+        rubberStampPairSubject(row.reviewer.login, row.author.login),
         row.rate,
         "ratio",
         `Rubber-stamp rate for ${row.reviewer.login} approving ${row.author.login}: ${row.flagged} of ${row.eligible} eligible approvals flagged.`,
@@ -168,21 +175,21 @@ function cycleTimeFacts(report: CycleTimeReport): Fact[] {
     return [
       fact(
         "cycletime",
-        `${interval.key}_p50`,
+        cycleTimeSubject(interval.key, "p50"),
         stats.median,
         "seconds",
         `Median seconds from ${interval.label}. Null when no merged pull request had this interval. n=${stats.count}.`,
       ),
       fact(
         "cycletime",
-        `${interval.key}_p75`,
+        cycleTimeSubject(interval.key, "p75"),
         stats.p75,
         "seconds",
         `75th percentile seconds from ${interval.label}. Null when no merged pull request had this interval. n=${stats.count}.`,
       ),
       fact(
         "cycletime",
-        `${interval.key}_n`,
+        cycleTimeSubject(interval.key, "n"),
         stats.count,
         "pull_requests",
         `Merged pull requests with a non-negative ${interval.label} interval.`,
@@ -216,15 +223,17 @@ function loadBalanceFacts(report: LoadBalanceReport): Fact[] {
 
 function leaderboardFacts(boards: Leaderboards): Fact[] {
   return BOARDS.flatMap((board) =>
-    [...boards[board.key]].sort(compareByCountDesc).map((entry, index) =>
-      fact(
-        "leaderboard",
-        `${board.key}:${entry.login}`,
-        entry.count,
-        board.unit,
-        `${entry.login} has ${counted(entry.count, board.singular, board.plural)} (position ${index + 1}).`,
+    [...boards[board.key]]
+      .sort(compareByCountDesc)
+      .map((entry, index) =>
+        fact(
+          "leaderboard",
+          leaderboardSubject(board.key, entry.login),
+          entry.count,
+          board.unit,
+          `${entry.login} has ${counted(entry.count, board.singular, board.plural)} (position ${index + 1}).`,
+        ),
       ),
-    ),
   );
 }
 
